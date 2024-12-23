@@ -10,66 +10,134 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Binding var navigationPath: NavigationPath
     @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-    @State private var selectedEntry: JournalEntry?
+    @Query(sort: \Chat.updatedAt, order: .reverse) private var chats: [Chat]
+    @State private var isSettingsPresented = false
+    @Query private var settings: [Settings]
     
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(selection: $selectedEntry) {
-                Section() {
-                    if entries.isEmpty {
-                        ContentUnavailableView(
-                            "No journal entries yet",
-                            // systemImage: "square.and.pencil",
-                            systemImage: "pencil",
-                            description: Text("Start writing your first entry")
-                        )
-                        .listRowBackground(Color.clear)
-                    } else {
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                List {
+                    // Chats Section
+                    Section {
+                        ForEach(chats) { chat in
+                            NavigationLink(value: ChatDestination.existing(chat)) {
+                                ChatRow(chat: chat)
+                            }
+                        }
+                        .onDelete(perform: deleteChats)
+                    } header: {
+                        HStack {
+                            Text("Chats")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .textCase(nil)
+                                .padding(.leading, -16)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    
+                    // Journal Section
+                    Section {
                         ForEach(entries) { entry in
-                            NavigationLink(value: entry) {
+                            NavigationLink(value: JournalDestination.existing(entry)) {
                                 JournalEntryRow(entry: entry)
                             }
                         }
                         .onDelete(perform: deleteEntries)
-                    }
-                } header: {
-                    HStack(spacing: 16) {
-                        Text("Journal")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
-                            .padding(.leading, -16)
+                    } header: {
+                        HStack {
+                            Text("Journal")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .textCase(nil)
+                                .padding(.leading, -16)
 
-                        Spacer()
-                        
-                        Button(action: createAndOpenNewEntry) {
-                            Image(systemName: "square.and.pencil")
+                            Spacer()
+                            
+                            Button(action: createAndOpenNewEntry) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.title3)
+                                    .padding(.trailing, -16)
+                            }
                         }
-                        .padding(.trailing, -8)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Gotama")
-        } detail: {
-            if let selectedEntry {
-                JournalEntryView(entry: selectedEntry)
-            } else {
-                Text("Select an entry")
+                .listStyle(.insetGrouped)
+                .navigationTitle("Home")
+                .navigationDestination(for: ChatDestination.self) { destination in
+                    switch destination {
+                    case .existing(let chat):
+                        ChatView(chat: chat)
+                            .id(chat.id)
+                    case .new:
+                        ChatView(chat: nil)
+                            .id(UUID())
+                    }
+                }
+                .navigationDestination(for: JournalDestination.self) { destination in
+                    switch destination {
+                    case .existing(let entry):
+                        JournalEntryView(entry: entry)
+                    case .new:
+                        JournalEntryView(entry: nil)
+                            .id(UUID())
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(id: "settingsButton", placement: .topBarTrailing) {
+                        Button {
+                            isSettingsPresented = true
+                        } label: {
+                            if let firstName = settings.first?.firstName, !firstName.isEmpty {
+                                Text(firstName.prefix(1))
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 32, height: 32)
+                                    .background(.accent)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: "person.crop.circle")
+                                    .font(.title3)
+                            }
+                        }
+                    }
+                }
+                .sheet(isPresented: $isSettingsPresented) {
+                    SettingsView()
+                }
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: createAndOpenNewChat) {
+                            Image(systemName: "plus.message.fill")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                                .frame(width: 56, height: 56)
+                                .background(.accent)
+                                .clipShape(Circle())
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 16)
+                    }
+                }
             }
         }
     }
     
     private func createAndOpenNewEntry() {
-        let newEntry = JournalEntry()
-        modelContext.insert(newEntry)
         withAnimation {
-            selectedEntry = newEntry
-            columnVisibility = .detailOnly
+            navigationPath.append(JournalDestination.new)
         }
     }
     
@@ -80,9 +148,50 @@ struct ContentView: View {
             }
         }
     }
+    
+    private func createAndOpenNewChat() {
+        withAnimation {
+            navigationPath.append(ChatDestination.new)
+        }
+    }
+    
+    private func deleteChats(offsets: IndexSet) {
+        print("🗑️ Deleting chats at offsets: \(offsets)")
+        withAnimation(.easeInOut(duration: 0.3)) {
+            for index in offsets {
+                print("🗑️ Deleting chat: \(chats[index].id)")
+                modelContext.delete(chats[index])
+            }
+        }
+    }
+}
+
+struct ChatRow: View {
+    let chat: Chat
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(chat.title)
+                .fontWeight(.medium)
+            Text(chat.messages.last?.content ?? "Click to continue")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
 }
 
 #Preview {
-    ContentView()
+    ContentView(navigationPath: .constant(NavigationPath()))
         .modelContainer(for: JournalEntry.self, inMemory: true)
+}
+
+enum ChatDestination: Hashable {
+    case existing(Chat)
+    case new
+}
+
+enum JournalDestination: Hashable {
+    case existing(JournalEntry)
+    case new
 }

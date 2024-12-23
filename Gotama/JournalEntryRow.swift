@@ -5,7 +5,7 @@ struct JournalEntryRow: View {
     
     var previewText: String {
         if entry.text.isEmpty {
-            return "New entry"
+            return "Click to continue"
         }
         return entry.text
             .split(separator: "\n", maxSplits: 1)[0]

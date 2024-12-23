@@ -10,23 +10,26 @@ import SwiftData
 
 @main
 struct GotamaApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            JournalEntry.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+    let container: ModelContainer
+    @State private var navigationPath: NavigationPath
+    
+    init() {
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            container = try ModelContainer(
+                for: Chat.self, JournalEntry.self, Settings.self,
+                migrationPlan: nil,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: false)
+            )
+            _navigationPath = State(initialValue: NavigationPath([ChatDestination.new]))
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            fatalError("Could not configure SwiftData container: \(error)")
         }
-    }()
-
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(navigationPath: $navigationPath)
+                .modelContainer(container)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
