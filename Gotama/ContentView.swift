@@ -10,51 +10,73 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var selectedEntry: JournalEntry?
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List(selection: $selectedEntry) {
+                Section() {
+                    if entries.isEmpty {
+                        ContentUnavailableView(
+                            "No journal entries yet",
+                            // systemImage: "square.and.pencil",
+                            systemImage: "pencil",
+                            description: Text("Start writing your first entry")
+                        )
+                        .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(entries) { entry in
+                            NavigationLink(value: entry) {
+                                JournalEntryRow(entry: entry)
+                            }
+                        }
+                        .onDelete(perform: deleteEntries)
                     }
-                }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                } header: {
+                    HStack(spacing: 16) {
+                        Text("Journal")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                            .textCase(nil)
+                            .padding(.leading, -16)
+
+                        Spacer()
+                        
+                        Button(action: createAndOpenNewEntry) {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .padding(.trailing, -8)
                     }
+                    .padding(.vertical, 8)
                 }
             }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Gotama")
         } detail: {
-            Text("Select an item")
+            if let selectedEntry {
+                JournalEntryView(entry: selectedEntry)
+            } else {
+                Text("Select an entry")
+            }
         }
     }
-
-    private func addItem() {
+    
+    private func createAndOpenNewEntry() {
+        let newEntry = JournalEntry()
+        modelContext.insert(newEntry)
         withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+            selectedEntry = newEntry
+            columnVisibility = .detailOnly
         }
     }
-
-    private func deleteItems(offsets: IndexSet) {
+    
+    private func deleteEntries(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(items[index])
+                modelContext.delete(entries[index])
             }
         }
     }
@@ -62,5 +84,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: JournalEntry.self, inMemory: true)
 }
