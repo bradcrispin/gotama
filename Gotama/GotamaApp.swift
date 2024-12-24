@@ -12,6 +12,7 @@ import SwiftData
 struct GotamaApp: App {
     let container: ModelContainer
     @State private var navigationPath: NavigationPath
+    @State private var isShowingLaunchScreen = true
     
     init() {
         do {
@@ -28,8 +29,23 @@ struct GotamaApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView(navigationPath: $navigationPath)
-                .modelContainer(container)
+            ZStack {
+                ContentView(navigationPath: $navigationPath)
+                    .modelContainer(container)
+                
+                if isShowingLaunchScreen {
+                    LaunchScreenView()
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        isShowingLaunchScreen = false
+                    }
+                }
+            }
         }
     }
 }

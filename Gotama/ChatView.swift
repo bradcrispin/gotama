@@ -78,6 +78,11 @@ struct ChatView: View {
         hasUserScrolled = false // Reset scroll state for new message
         
         Task {
+            // Configure API key before sending message
+            if let settings = settings.first {
+                await anthropic.configure(with: settings.anthropicApiKey)
+            }
+            
             do {
                 var chunkCount = 0
                 print("📤 Starting message stream...")
@@ -186,27 +191,6 @@ struct ChatView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .overlay(alignment: .bottomTrailing) {
-                        if showScrollToBottom {
-                            Button {
-                                withAnimation(.spring(duration: 0.3)) {
-                                    proxy.scrollTo(existingChat.messages.last?.id, anchor: .bottom)
-                                    showScrollToBottom = false
-                                    hasUserScrolled = false
-                                    isNearBottom = true
-                                }
-                            } label: {
-                                Image(systemName: "arrow.down.circle.fill")
-                                    .font(.title)
-                                    .foregroundStyle(.accent)
-                                    .background(.background)
-                                    .clipShape(Circle())
-                            }
-                            .padding(.trailing, 16)
-                            .padding(.bottom, 80)
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
                     .onAppear {
                         scrollProxy = proxy
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -255,12 +239,14 @@ struct ChatView: View {
                         Text("Hi \(firstName). What is in your mind?")
                             .font(.title)
                             .multilineTextAlignment(.center)
-                            .matchedGeometryEffect(id: "title", in: animation)
+                            .matchedGeometryEffect(id: "greeting", in: animation)
+                            .frame(maxWidth: 300)
                     } else {
                         Text("What is in your mind?")
                             .font(.title)
                             .multilineTextAlignment(.center)
                             .matchedGeometryEffect(id: "title", in: animation)
+                            .frame(maxWidth: 300)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
