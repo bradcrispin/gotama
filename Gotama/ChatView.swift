@@ -251,10 +251,17 @@ struct ChatView: View {
                             startAsteriskAnimation()
                         }
                     
-                    Text("What is in your mind?")
-                        .font(.title)
-                        .multilineTextAlignment(.center)
-                        .matchedGeometryEffect(id: "title", in: animation)
+                    if let firstName = settings.first?.firstName, !firstName.isEmpty {
+                        Text("Hi \(firstName). What is in your mind?")
+                            .font(.title)
+                            .multilineTextAlignment(.center)
+                            .matchedGeometryEffect(id: "title", in: animation)
+                    } else {
+                        Text("What is in your mind?")
+                            .font(.title)
+                            .multilineTextAlignment(.center)
+                            .matchedGeometryEffect(id: "title", in: animation)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.background)
