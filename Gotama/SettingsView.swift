@@ -8,6 +8,17 @@ struct SettingsView: View {
     @State private var apiKey: String = ""
     @State private var isApiKeyVisible = false
     @State private var firstName: String = ""
+    @FocusState private var isApiKeyFocused: Bool
+    let focusApiKey: Bool
+    var onSaved: (() -> Void)?
+    
+    private let haptics = UIImpactFeedbackGenerator(style: .medium)
+    private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
+    
+    init(focusApiKey: Bool = false, onSaved: (() -> Void)? = nil) {
+        self.focusApiKey = focusApiKey
+        self.onSaved = onSaved
+    }
     
     var body: some View {
         NavigationStack {
@@ -22,8 +33,10 @@ struct SettingsView: View {
                     HStack {
                         if isApiKeyVisible {
                             TextField("API Key", text: $apiKey)
+                                .focused($isApiKeyFocused)
                         } else {
                             SecureField("API Key", text: $apiKey)
+                                .focused($isApiKeyFocused)
                         }
                         
                         Button {
@@ -44,12 +57,15 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
+                        softHaptics.impactOccurred()
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
+                        haptics.impactOccurred()
                         saveSettings()
+                        onSaved?()
                         dismiss()
                     }
                 }
@@ -58,6 +74,9 @@ struct SettingsView: View {
                 if let existingSettings = settings.first {
                     apiKey = existingSettings.anthropicApiKey
                     firstName = existingSettings.firstName
+                }
+                if focusApiKey {
+                    isApiKeyFocused = true
                 }
             }
         }
@@ -82,13 +101,7 @@ struct SettingsView: View {
         do {
             try modelContext.save()
             print("✅ Settings saved successfully")
-            
-            // Configure AnthropicClient with new API key
-            Task {
-                let client = AnthropicClient()
-                await client.configure(with: apiKey)
-                print("🔄 Configured AnthropicClient with new API key")
-            }
+            onSaved?()
         } catch {
             print("❌ Error saving settings: \(error)")
         }

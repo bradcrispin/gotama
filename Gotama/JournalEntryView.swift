@@ -8,6 +8,9 @@ struct JournalEntryView: View {
     @State private var text: String = ""
     @FocusState private var isFocused: Bool
     
+    private let haptics = UIImpactFeedbackGenerator(style: .medium)
+    private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
+    
     init(entry: JournalEntry?) {
         _entry = State(initialValue: entry)
         _text = State(initialValue: entry?.text ?? "")
@@ -19,6 +22,7 @@ struct JournalEntryView: View {
             .padding()
             .onChange(of: text) {
                 if entry == nil {
+                    softHaptics.impactOccurred(intensity: 0.5)
                     let newEntry = JournalEntry(text: text)
                     modelContext.insert(newEntry)
                     entry = newEntry
@@ -34,6 +38,7 @@ struct JournalEntryView: View {
             }
             .onDisappear {
                 if let entry = entry, entry.text.isEmpty {
+                    haptics.impactOccurred()
                     modelContext.delete(entry)
                 }
             }

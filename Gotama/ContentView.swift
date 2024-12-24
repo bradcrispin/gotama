@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var isSettingsPresented = false
     @Query private var settings: [Settings]
     
+    private let haptics = UIImpactFeedbackGenerator(style: .medium)
+    private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
+    
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
@@ -136,12 +139,14 @@ struct ContentView: View {
     }
     
     private func createAndOpenNewEntry() {
+        haptics.impactOccurred()
         withAnimation {
             navigationPath.append(JournalDestination.new)
         }
     }
     
     private func deleteEntries(offsets: IndexSet) {
+        haptics.impactOccurred()
         withAnimation {
             for index in offsets {
                 modelContext.delete(entries[index])
@@ -150,12 +155,14 @@ struct ContentView: View {
     }
     
     private func createAndOpenNewChat() {
+        haptics.impactOccurred()
         withAnimation {
             navigationPath.append(ChatDestination.new)
         }
     }
     
     private func deleteChats(offsets: IndexSet) {
+        haptics.impactOccurred()
         print("🗑️ Deleting chats at offsets: \(offsets)")
         withAnimation(.easeInOut(duration: 0.3)) {
             for index in offsets {
@@ -173,10 +180,17 @@ struct ChatRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(chat.title)
                 .fontWeight(.medium)
-            Text(chat.messages.last?.content ?? "Click to continue")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            if let lastAssistantMessage = chat.messages.last(where: { $0.role == "assistant" }) {
+                Text(lastAssistantMessage.content)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                Text("Waiting for response...")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
     }
 }
