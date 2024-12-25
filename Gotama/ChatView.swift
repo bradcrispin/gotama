@@ -419,14 +419,9 @@ struct ChatView: View {
                         .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
+                        .foregroundColor(isRecording ? .white : .primary)
                         .onChange(of: messageText) { oldValue, newValue in
-                            // print("📝 Text changed: '\(oldValue)' -> '\(newValue)'")
-                            // print("🎙️ isRecording: \(isRecording)")
-                            // print("🔤 isTextFromRecognition: \(isTextFromRecognition)")
-                            
-                            // Only stop dictation if text changed from keyboard input
                             if isRecording && !isTextFromRecognition {
-                                // print("⌨️ Keyboard input detected while recording - stopping dictation")
                                 stopDictation()
                             }
                         }
@@ -445,8 +440,9 @@ struct ChatView: View {
                             Image(systemName: isRecording ? "mic.fill" : 
                                   (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill"))
                                 .font(.title2)
-                                .foregroundColor(isLoading ? .secondary : .accent)
+                                .foregroundColor(isLoading ? .secondary : (isRecording ? .white : .accent))
                                 .symbolEffect(.bounce, value: isRecording)
+                                .modifier(PulseEffect(isActive: isRecording))
                         }
                         .disabled(isLoading)
                         .padding(.trailing, 12)
@@ -457,13 +453,29 @@ struct ChatView: View {
             .padding(.vertical, 8)
             .background {
                 VStack(spacing: 0) {
-                    Color(white: 0.23)
-                        .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                            .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
-                    Color(white: 0.23)
-                        .frame(maxHeight: .infinity)
-                        .edgesIgnoringSafeArea(.bottom)
+                    Group {
+                        if isRecording {
+                            Color.accent
+                                .opacity(0.8)
+                        } else {
+                            Color(white: 0.23)
+                        }
+                    }
+                    .clipShape(UnevenRoundedRectangle(cornerRadii: 
+                        .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
+                    
+                    Group {
+                        if isRecording {
+                            Color.accent
+                                .opacity(0.8)
+                        } else {
+                            Color(white: 0.23)
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                    .edgesIgnoringSafeArea(.bottom)
                 }
+                .animation(.smooth(duration: 0.3), value: isRecording)
             }
         }
     }
@@ -766,5 +778,17 @@ struct ErrorBanner: View {
         .padding(.top)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+    }
+}
+
+struct PulseEffect: ViewModifier {
+    let isActive: Bool
+    
+    func body(content: Content) -> some View {
+        if isActive {
+            content.symbolEffect(.pulse.byLayer, options: .repeating)
+        } else {
+            content
+        }
     }
 }
