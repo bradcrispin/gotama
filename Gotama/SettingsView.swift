@@ -45,7 +45,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Do you have a goal?")
                 } footer: {
-                    Text("It can be skillful to have a goal (\(goal.count)/\(maxGoalLength) characters)")
+                    Group {
+                        if goal.count > Int(Double(maxGoalLength) * 0.8) {
+                            Text("Getting close to limit (\(goal.count)/\(maxGoalLength) characters)")
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
                 
                 Section {
@@ -59,7 +64,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Tell me about yourself")
                 } footer: {
-                    Text("I can help you achieve your goal (\(aboutMe.count)/\(maxAboutMeLength) characters)")
+                    Group {
+                        if aboutMe.count > Int(Double(maxAboutMeLength) * 0.8) {
+                            Text("Getting close to limit (\(aboutMe.count)/\(maxAboutMeLength) characters)")
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
                 
                 Section {
@@ -82,7 +92,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Anthropic API Key")
                 } footer: {
-                    Text("Get your API key from anthropic.com")
+                    Text("Get your API key from console.anthropic.com")
                 }
             }
             .navigationTitle("Settings")

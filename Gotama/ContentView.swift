@@ -14,7 +14,7 @@ struct ContentView: View {
     @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
     @Query(sort: \Chat.updatedAt, order: .reverse) private var chats: [Chat]
     @State private var isSettingsPresented = false
-    @State private var isChatSectionExpanded = false
+    @State private var isChatSectionExpanded = true
     @Query private var settings: [Settings]
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
@@ -49,11 +49,11 @@ struct ContentView: View {
                                     .textCase(nil)
                                     .padding(.leading, -16)
                                 
-                                if !chats.isEmpty {
-                                    Text("(\(chats.count))")
-                                        .foregroundStyle(.primary.opacity(0.7))
-                                        .font(.subheadline)
-                                }
+                                // if !chats.isEmpty {
+                                //     Text("(\(chats.count))")
+                                //         .foregroundStyle(.primary.opacity(0.7))
+                                //         .font(.subheadline)
+                                // }
                                 
                                 Spacer()
                                 
@@ -68,32 +68,32 @@ struct ContentView: View {
                     }
                     
                     // Journal Section
-                    Section {
-                        ForEach(entries) { entry in
-                            NavigationLink(value: JournalDestination.existing(entry)) {
-                                JournalEntryRow(entry: entry)
-                            }
-                        }
-                        .onDelete(perform: deleteEntries)
-                    } header: {
-                        HStack {
-                            Text("Journal")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                                .textCase(nil)
-                                .padding(.leading, -16)
+                    // Section {
+                    //     ForEach(entries) { entry in
+                    //         NavigationLink(value: JournalDestination.existing(entry)) {
+                    //             JournalEntryRow(entry: entry)
+                    //         }
+                    //     }
+                    //     .onDelete(perform: deleteEntries)
+                    // } header: {
+                    //     HStack {
+                    //         Text("Journal")
+                    //             .font(.title2)
+                    //             .fontWeight(.semibold)
+                    //             .foregroundStyle(.primary)
+                    //             .textCase(nil)
+                    //             .padding(.leading, -16)
 
-                            Spacer()
+                    //         Spacer()
                             
-                            Button(action: createAndOpenNewEntry) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.title3)
-                                    .padding(.trailing, -16)
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
+                    //         Button(action: createAndOpenNewEntry) {
+                    //             Image(systemName: "square.and.pencil")
+                    //                 .font(.title3)
+                    //                 .padding(.trailing, -16)
+                    //         }
+                    //     }
+                    //     .padding(.vertical, 8)
+                    // }
                 }
                 .listStyle(.insetGrouped)
                 .navigationTitle("Home")
@@ -199,20 +199,15 @@ struct ChatRow: View {
     let chat: Chat
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ViewThatFits {
-                // Try to fit the full title
-                Text(chat.title)
-                    .fontWeight(.medium)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                // If it doesn't fit, show truncated with ellipsis
-                Text(chat.title)
-                    .fontWeight(.medium)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-            }
+        HStack {
+            Text(chat.title)
+                .fontWeight(.medium)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(height: 52)
+        .padding(.vertical, 4)
     }
 }
 
@@ -236,7 +231,7 @@ struct JournalEntryRow: View {
             Text(entry.createdAt, format: .dateTime.month().day().year())
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .lineLimit(1)
         }
         .padding(.vertical, 4)
     }

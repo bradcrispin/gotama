@@ -32,6 +32,14 @@ struct ChatView: View {
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
     private let anthropic = AnthropicClient()
     
+    private func updateCanCreateNewChat() {
+        if let currentChat = chat {
+            canCreateNewChat = currentChat.messages.contains(where: { $0.role == "assistant" && ($0.isTyping ?? false) == false })
+        } else {
+            canCreateNewChat = false
+        }
+    }
+    
     private var isApiKeyConfigured: Bool {
         guard let settings = settings.first else {
             print("⚠️ No settings found")
@@ -159,7 +167,7 @@ struct ChatView: View {
                 
                 await MainActor.run {
                     isLoading = false
-                    canCreateNewChat = true
+                    updateCanCreateNewChat()
                     softHaptics.impactOccurred(intensity: 0.7)
                 }
             } catch {
@@ -327,19 +335,19 @@ struct ChatView: View {
                     }
                     
                     // Delay focus until after animation
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        print("⌨️ Setting focus state to true")
-                        isFocused = true
+                    // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    //     print("⌨️ Setting focus state to true")
+                    //     isFocused = true
                         
-                        // Additional delay for keyboard
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            print("⌨️ Forcing keyboard appearance")
-                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder),
-                                                         to: nil,
-                                                         from: nil,
-                                                         for: nil)
-                        }
-                    }
+                    //     // Additional delay for keyboard
+                    //     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    //         print("⌨️ Forcing keyboard appearance")
+                    //         UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder),
+                    //                                      to: nil,
+                    //                                      from: nil,
+                    //                                      for: nil)
+                    //     }
+                    // }
                 } label: {
                     Image(systemName: "plus.message")
                 }
@@ -350,6 +358,7 @@ struct ChatView: View {
         .onAppear {
             if let chatId = chat?.id {
                 print("📱 ChatView appeared for chat: \(chatId)")
+                updateCanCreateNewChat()
             } else {
                 print("📱 ChatView appeared for new chat")
                 
@@ -361,19 +370,19 @@ struct ChatView: View {
                     startAsteriskAnimation()
                     
                     // Only set focus and show keyboard if we don't need to show settings
-                    let needsSettings = settings.first?.firstName.isEmpty ?? true || 
-                                      settings.first?.anthropicApiKey.isEmpty ?? true
-                    if !needsSettings {
-                        isFocused = true
+                    // let needsSettings = settings.first?.firstName.isEmpty ?? true || 
+                    //                   settings.first?.anthropicApiKey.isEmpty ?? true
+                    // if !needsSettings {
+                    //     isFocused = true
                         
-                        // Only show keyboard if not from launch screen
-                        if !isFromLaunchScreen {
-                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
-                                                         to: nil, 
-                                                         from: nil, 
-                                                         for: nil)
-                        }
-                    }
+                    //     //Only show keyboard if not from launch screen
+                    //     if !isFromLaunchScreen {
+                    //         UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
+                    //                                      to: nil, 
+                    //                                      from: nil, 
+                    //                                      for: nil)
+                    //     }
+                    // }
                 }
             }
             
@@ -731,7 +740,7 @@ struct MessageBubble: View {
                     .padding(.top, 4)
                 }
             }
-            .background(message.role == "user" ? Color(white: 0.1) : nil)
+            .background(message.role == "user" ? Color(white: 0.15) : nil)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             
             if message.role == "assistant" {
