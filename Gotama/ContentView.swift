@@ -14,6 +14,7 @@ struct ContentView: View {
     @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
     @Query(sort: \Chat.updatedAt, order: .reverse) private var chats: [Chat]
     @State private var isSettingsPresented = false
+    @State private var isChatSectionExpanded = false
     @Query private var settings: [Settings]
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
@@ -25,23 +26,44 @@ struct ContentView: View {
                 List {
                     // Chats Section
                     Section {
-                        ForEach(chats) { chat in
-                            NavigationLink(value: ChatDestination.existing(chat)) {
-                                ChatRow(chat: chat)
+                        if isChatSectionExpanded {
+                            ForEach(chats) { chat in
+                                NavigationLink(value: ChatDestination.existing(chat)) {
+                                    ChatRow(chat: chat)
+                                }
+                            }
+                            .onDelete(perform: deleteChats)
+                        }
+                    } header: {
+                        Button {
+                            withAnimation(.spring(duration: 0.3)) {
+                                isChatSectionExpanded.toggle()
+                                softHaptics.impactOccurred()
+                            }
+                        } label: {
+                            HStack {
+                                Text("Chats")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                    .textCase(nil)
+                                    .padding(.leading, -16)
+                                
+                                if !chats.isEmpty {
+                                    Text("(\(chats.count))")
+                                        .foregroundStyle(.primary.opacity(0.7))
+                                        .font(.subheadline)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.primary.opacity(0.7))
+                                    .rotationEffect(.degrees(isChatSectionExpanded ? 90 : 0))
+                                    .padding(.trailing, -8)
                             }
                         }
-                        .onDelete(perform: deleteChats)
-                    } header: {
-                        HStack {
-                            Text("Chats")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                                .textCase(nil)
-                                .padding(.leading, -16)
-                            
-                            Spacer()
-                        }
+                        .buttonStyle(.plain)
                         .padding(.vertical, 8)
                     }
                     
@@ -180,11 +202,14 @@ struct ChatRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(chat.title)
                 .fontWeight(.medium)
+                .lineLimit(2)
+                .truncationMode(.tail)
             if let lastAssistantMessage = chat.messages.last(where: { $0.role == "assistant" }) {
                 Text(lastAssistantMessage.content)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             } else {
                 Text("Waiting for response...")
                     .font(.subheadline)

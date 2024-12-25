@@ -9,23 +9,31 @@ struct LaunchScreenView: View {
                 // Container for both elements
                 VStack(spacing: -min(geometry.size.width, geometry.size.height) * 0.05) {
                     // Asterisk
-                    Text("*")
-                        .font(.system(size: min(geometry.size.width, geometry.size.height) * 0.35))
+                    Image(systemName: "asterisk")
+                        .font(.system(size: min(geometry.size.width, geometry.size.height) * 0.15))
                         .rotationEffect(.degrees(45))
-                        .foregroundColor(.accentColor)
-                        .offset(x: -min(geometry.size.width, geometry.size.height) * 0.03)
+                        .foregroundStyle(.accent)
+                        .padding(27)
                     
                     // App name
                     Text("Gotama")
                         .font(.system(size: min(geometry.size.width, geometry.size.height) * 0.12))
                         .fontWeight(.medium)
                 }
-                .offset(y: -geometry.size.height * 0.05) // Move entire container up slightly
+                .offset(y: -geometry.size.height * 0.05)
                 
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(uiColor: .systemBackground))
+            .onAppear {
+                // Set environment variable to indicate we're coming from launch screen
+                setenv("FROM_LAUNCH_SCREEN", "true", 1)
+            }
+            .onDisappear {
+                // Clear the environment variable when launch screen disappears
+                unsetenv("FROM_LAUNCH_SCREEN")
+            }
         }
     }
 }

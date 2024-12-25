@@ -45,6 +45,13 @@ struct ChatView: View {
         
         haptics.impactOccurred()
         
+        // Dismiss keyboard
+        isFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                     to: nil,
+                                     from: nil,
+                                     for: nil)
+        
         print("🔍 Checking API key configuration...")
         guard isApiKeyConfigured else {
             print("❌ API key not configured")
@@ -55,7 +62,7 @@ struct ChatView: View {
         
         if chat == nil {
             let newChat = Chat()
-            let title = String(trimmedText.prefix(50)).trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = trimmedText.trimmingCharacters(in: .whitespacesAndNewlines)
             newChat.title = title.isEmpty ? "New chat" : title
             modelContext.insert(newChat)
             chat = newChat
@@ -180,6 +187,7 @@ struct ChatView: View {
                             }
                         }
                         .padding()
+                        .frame(maxWidth: .infinity)
                         .onChange(of: existingChat.messages.count) { oldCount, newCount in
                             if !hasUserScrolled || isNearBottom {
                                 withAnimation(.spring(duration: 0.3)) {
@@ -193,10 +201,9 @@ struct ChatView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .onAppear {
                         scrollProxy = proxy
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            withAnimation(.spring(duration: 0.3)) {
-                                proxy.scrollTo(existingChat.messages.last?.id, anchor: .bottom)
-                            }
+                        // Position last message like we do after sending
+                        if let lastUserMessage = existingChat.messages.last(where: { $0.role == "user" }) {
+                            proxy.scrollTo(lastUserMessage.id, anchor: .top)
                         }
                     }
                     .simultaneousGesture(
@@ -332,13 +339,23 @@ struct ChatView: View {
                 print("📱 ChatView appeared for chat: \(chatId)")
             } else {
                 print("📱 ChatView appeared for new chat")
-                startAsteriskAnimation()
-                isFocused = true
                 
-                UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
-                                             to: nil, 
-                                             from: nil, 
-                                             for: nil)
+                // Only delay keyboard and animation if we're coming from launch screen
+                let isFromLaunchScreen = ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true"
+                let delay = isFromLaunchScreen ? 2.5 : 0.1
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    startAsteriskAnimation()
+                    isFocused = true
+                    
+                    // Only show keyboard if not from launch screen
+                    if !isFromLaunchScreen {
+                        UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
+                                                     to: nil, 
+                                                     from: nil, 
+                                                     for: nil)
+                    }
+                }
             }
             
             if let settings = settings.first {
@@ -402,10 +419,10 @@ struct ChatView: View {
             .padding(.vertical, 8)
             .background {
                 VStack(spacing: 0) {
-                    Color(white: 0.15)
+                    Color(white: 0.23)
                         .clipShape(UnevenRoundedRectangle(cornerRadii: 
                             .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
-                    Color(white: 0.15)
+                    Color(white: 0.23)
                         .frame(maxHeight: .infinity)
                         .edgesIgnoringSafeArea(.bottom)
                 }
