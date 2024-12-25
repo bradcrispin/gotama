@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct LaunchScreenView: View {
+    @State private var asteriskRotation = 45.0
+    @State private var isAnimating = false
+    
     var body: some View {
         GeometryReader { geometry in
             VStack {
@@ -11,7 +14,7 @@ struct LaunchScreenView: View {
                     // Asterisk
                     Image(systemName: "asterisk")
                         .font(.system(size: min(geometry.size.width, geometry.size.height) * 0.15))
-                        .rotationEffect(.degrees(45))
+                        .rotationEffect(.degrees(asteriskRotation))
                         .foregroundStyle(.accent)
                         .padding(27)
                     
@@ -29,6 +32,12 @@ struct LaunchScreenView: View {
             .onAppear {
                 // Set environment variable to indicate we're coming from launch screen
                 setenv("FROM_LAUNCH_SCREEN", "true", 1)
+                
+                // Start the rotation animation
+                withAnimation(.easeInOut(duration: 8)
+                    .repeatForever(autoreverses: false)) {
+                    asteriskRotation = 405 // 45 + 360 degrees
+                }
             }
             .onDisappear {
                 // Clear the environment variable when launch screen disappears
