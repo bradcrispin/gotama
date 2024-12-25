@@ -150,7 +150,7 @@ actor AnthropicClient {
                                 switch delta["type"] as? String {
                                 case "text_delta":
                                     if let text = delta["text"] as? String {
-                                        print("📨 Text delta: \(text)")
+                                        // print("📨 Text delta: \(text)")
                                         continuation.yield(text)
                                     }
                                 case "input_json_delta":

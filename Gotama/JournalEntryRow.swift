@@ -7,10 +7,10 @@ struct JournalEntryRow: View {
         if entry.text.isEmpty {
             return "Click to continue"
         }
-        return entry.text
-            .split(separator: "\n", maxSplits: 1)[0]
-            .prefix(50)
-            .trimmingCharacters(in: .whitespacesAndNewlines) + "..."
+        let firstLine = entry.text.split(separator: "\n", maxSplits: 1)[0]
+        let truncated = firstLine.prefix(50)
+        return truncated.trimmingCharacters(in: .whitespacesAndNewlines) + 
+               (truncated.count < firstLine.count ? "..." : "")
     }
     
     var body: some View {

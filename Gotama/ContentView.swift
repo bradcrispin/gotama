@@ -200,21 +200,17 @@ struct ChatRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(chat.title)
-                .fontWeight(.medium)
-                .lineLimit(2)
-                .truncationMode(.tail)
-            if let lastAssistantMessage = chat.messages.last(where: { $0.role == "assistant" }) {
-                Text(lastAssistantMessage.content)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            ViewThatFits {
+                // Try to fit the full title
+                Text(chat.title)
+                    .fontWeight(.medium)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                // If it doesn't fit, show truncated with ellipsis
+                Text(chat.title)
+                    .fontWeight(.medium)
+                    .lineLimit(2)
                     .truncationMode(.tail)
-            } else {
-                Text("Waiting for response...")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
     }

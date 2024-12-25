@@ -252,6 +252,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "We need local network access for on-device speech recognition.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for hands-free chatting.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition so you can chat hands-free.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -291,6 +294,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "We need local network access for on-device speech recognition.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for hands-free chatting.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition so you can chat hands-free.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

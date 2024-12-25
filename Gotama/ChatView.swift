@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Speech
 
 struct ChatView: View {
     @Environment(\.modelContext) private var modelContext
@@ -8,6 +9,7 @@ struct ChatView: View {
     @State private var messageText: String = ""
     @State private var isLoading = false
     @FocusState private var isFocused: Bool
+    @State private var isTextFromRecognition = false
     @State private var errorMessage: String?
     @Query private var settings: [Settings]
     @State private var showSettingsOnAppear = false
@@ -20,6 +22,11 @@ struct ChatView: View {
     @State private var isNearBottom = true
     @State private var showScrollToBottom = false
     @State private var hasUserScrolled = false
+    @State private var isRecording = false
+    @State private var speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer()
+    @State private var recognitionTask: SFSpeechRecognitionTask?
+    @State private var audioEngine = AVAudioEngine()
+    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -30,7 +37,7 @@ struct ChatView: View {
             print("⚠️ No settings found")
             return false
         }
-        print("🔑 API Key configured: \(!settings.anthropicApiKey.isEmpty)")
+        print("��� API Key configured: \(!settings.anthropicApiKey.isEmpty)")
         print("🔑 API Key length: \(settings.anthropicApiKey.count)")
         return !settings.anthropicApiKey.isEmpty
     }
@@ -44,6 +51,9 @@ struct ChatView: View {
         guard !trimmedText.isEmpty else { return }
         
         haptics.impactOccurred()
+        
+        // Clear the text input immediately
+        messageText = ""
         
         // Dismiss keyboard
         isFocused = false
@@ -76,7 +86,6 @@ struct ChatView: View {
         let userMessage = ChatMessage(role: "user", content: trimmedText, createdAt: Date())
         chat?.messages.append(userMessage)
         chat?.updatedAt = Date()
-        messageText = ""
         
         let assistantMessage = ChatMessage(role: "assistant", content: "", createdAt: Date(), isTyping: true)
         chat?.messages.append(assistantMessage)
@@ -125,7 +134,7 @@ struct ChatView: View {
                     try await Task.sleep(nanoseconds: 20_000_000) // 20ms delay
                     
                     await MainActor.run {
-                        let beforeLength = assistantMessage.content.count
+                        // let beforeLength = assistantMessage.content.count
                         assistantMessage.content += text
                         
                         // Provide subtle haptic feedback every few chunks
@@ -140,7 +149,7 @@ struct ChatView: View {
                             }
                         }
                         
-                        print("📝 Updated content length: \(beforeLength) -> \(assistantMessage.content.count)")
+                        // print("📝 Updated content length: \(beforeLength) -> \(assistantMessage.content.count)")
                     }
                 }
                 
@@ -169,6 +178,10 @@ struct ChatView: View {
                 ErrorBanner(message: error) {
                     if error.contains("API key") {
                         showSettings = true
+                    } else if error.contains("microphone") || error.contains("speech recognition") {
+                        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsUrl)
+                        }
                     }
                 }
             }
@@ -400,17 +413,36 @@ struct ChatView: View {
                         .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
+                        .onChange(of: messageText) { oldValue, newValue in
+                            print("📝 Text changed: '\(oldValue)' -> '\(newValue)'")
+                            print("🎙️ isRecording: \(isRecording)")
+                            print("🔤 isTextFromRecognition: \(isTextFromRecognition)")
+                            
+                            // Only stop dictation if text changed from keyboard input
+                            if isRecording && !isTextFromRecognition {
+                                print("⌨️ Keyboard input detected while recording - stopping dictation")
+                                stopDictation()
+                            }
+                        }
                     
                     HStack {
                         Spacer()
                         Button {
-                            sendMessage()
+                            if isRecording {
+                                stopDictation()
+                            } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                startDictation()
+                            } else {
+                                sendMessage()
+                            }
                         } label: {
-                            Image(systemName: "arrow.up.circle.fill")
+                            Image(systemName: isRecording ? "mic.fill" : 
+                                  (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill"))
                                 .font(.title2)
-                                .foregroundColor(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading ? .secondary : .accent)
+                                .foregroundColor(isLoading ? .secondary : .accent)
+                                .symbolEffect(.bounce, value: isRecording)
                         }
-                        .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
+                        .disabled(isLoading)
                         .padding(.trailing, 12)
                     }
                 }
@@ -490,6 +522,150 @@ struct ChatView: View {
             .repeatForever(autoreverses: false)) {
                 asteriskRotation = 405 // 45 + 360 degrees
         }
+    }
+    
+    private func startDictation() {
+        guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
+            errorMessage = "Speech recognition is not available at this time"
+            return
+        }
+        
+        // First check microphone permission
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    if !granted {
+                        self.errorMessage = "Tap here to enable microphone access in Settings"
+                        return
+                    }
+                    self.checkSpeechRecognitionPermission()
+                }
+            }
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    if !granted {
+                        self.errorMessage = "Tap here to enable microphone access in Settings"
+                        return
+                    }
+                    self.checkSpeechRecognitionPermission()
+                }
+            }
+        }
+    }
+    
+    private func checkSpeechRecognitionPermission() {
+        SFSpeechRecognizer.requestAuthorization { authStatus in
+            DispatchQueue.main.async {
+                switch authStatus {
+                case .authorized:
+                    if self.isRecording {
+                        self.stopDictation()
+                    } else {
+                        do {
+                            try self.startRecording()
+                        } catch {
+                            self.errorMessage = "Failed to start recording: \(error.localizedDescription)"
+                            print("Failed to start recording: \(error)")
+                        }
+                    }
+                case .denied:
+                    self.errorMessage = "Tap here to enable speech recognition in Settings"
+                case .restricted:
+                    self.errorMessage = "Speech recognition is restricted on this device"
+                case .notDetermined:
+                    self.errorMessage = "Speech recognition not yet authorized"
+                @unknown default:
+                    self.errorMessage = "Speech recognition not available"
+                }
+            }
+        }
+    }
+    
+    private func startRecording() throws {
+        // Cancel existing task and request
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        // Configure audio session
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else {
+            throw NSError(domain: "SpeechRecognition", code: -1, 
+                         userInfo: [NSLocalizedDescriptionKey: "Unable to create recognition request"])
+        }
+        
+        recognitionRequest.shouldReportPartialResults = true
+        
+        // For on-device recognition
+        if #available(iOS 13, *) {
+            recognitionRequest.requiresOnDeviceRecognition = true
+        }
+        
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+            recognitionRequest.append(buffer)
+        }
+        
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+            if let result = result {
+                let transcribedText = result.bestTranscription.formattedString
+                
+                // Only update if the transcription has actual content
+                if !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    DispatchQueue.main.async {
+                        print("🎤 Speech recognition update: \(transcribedText)")
+                        self.isTextFromRecognition = true
+                        self.messageText = transcribedText
+                        
+                        // Add a small delay before resetting the flag
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            self.isTextFromRecognition = false
+                        }
+                    }
+                } else {
+                    print("🎤 Ignoring empty transcription")
+                }
+            }
+            
+            if error != nil || (result?.isFinal ?? false) {
+                print("🎤 Speech recognition ended: \(error?.localizedDescription ?? "Final result")")
+                self.stopDictation()
+            }
+        }
+        
+        audioEngine.prepare()
+        try audioEngine.start()
+        
+        withAnimation {
+            isRecording = true
+        }
+        
+        softHaptics.impactOccurred()
+    }
+    
+    private func stopDictation() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        withAnimation {
+            isRecording = false
+        }
+        
+        softHaptics.impactOccurred()
     }
 }
 
