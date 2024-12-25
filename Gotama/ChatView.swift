@@ -37,8 +37,8 @@ struct ChatView: View {
             print("⚠️ No settings found")
             return false
         }
-        print("��� API Key configured: \(!settings.anthropicApiKey.isEmpty)")
-        print("🔑 API Key length: \(settings.anthropicApiKey.count)")
+        // print("🔑 API Key configured: \(!settings.anthropicApiKey.isEmpty)")
+        // print("🔑 API Key length: \(settings.anthropicApiKey.count)")
         return !settings.anthropicApiKey.isEmpty
     }
     
@@ -109,7 +109,7 @@ struct ChatView: View {
                 }
                 print("📨 New message: \(trimmedText)")
                 
-                let stream = try await anthropic.sendMessage(trimmedText, previousMessages: previousMessages)
+                let stream = try await anthropic.sendMessage(trimmedText, settings: settings.first, previousMessages: previousMessages)
                 
                 let startTime = Date()
                 for try await text in stream {
@@ -359,14 +359,20 @@ struct ChatView: View {
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     startAsteriskAnimation()
-                    isFocused = true
                     
-                    // Only show keyboard if not from launch screen
-                    if !isFromLaunchScreen {
-                        UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
-                                                     to: nil, 
-                                                     from: nil, 
-                                                     for: nil)
+                    // Only set focus and show keyboard if we don't need to show settings
+                    let needsSettings = settings.first?.firstName.isEmpty ?? true || 
+                                      settings.first?.anthropicApiKey.isEmpty ?? true
+                    if !needsSettings {
+                        isFocused = true
+                        
+                        // Only show keyboard if not from launch screen
+                        if !isFromLaunchScreen {
+                            UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
+                                                         to: nil, 
+                                                         from: nil, 
+                                                         for: nil)
+                        }
                     }
                 }
             }
@@ -414,13 +420,13 @@ struct ChatView: View {
                         .focused($isFocused)
                         .disabled(isLoading)
                         .onChange(of: messageText) { oldValue, newValue in
-                            print("📝 Text changed: '\(oldValue)' -> '\(newValue)'")
-                            print("🎙️ isRecording: \(isRecording)")
-                            print("🔤 isTextFromRecognition: \(isTextFromRecognition)")
+                            // print("📝 Text changed: '\(oldValue)' -> '\(newValue)'")
+                            // print("🎙️ isRecording: \(isRecording)")
+                            // print("🔤 isTextFromRecognition: \(isTextFromRecognition)")
                             
                             // Only stop dictation if text changed from keyboard input
                             if isRecording && !isTextFromRecognition {
-                                print("⌨️ Keyboard input detected while recording - stopping dictation")
+                                // print("⌨️ Keyboard input detected while recording - stopping dictation")
                                 stopDictation()
                             }
                         }
@@ -492,7 +498,7 @@ struct ChatView: View {
                 print("  \(index + 1). [\(msg.role)]: \(msg.content)")
             }
             
-            let stream = try await anthropic.sendMessage(userMessage.content, previousMessages: previousMessages)
+            let stream = try await anthropic.sendMessage(userMessage.content, settings: settings.first, previousMessages: previousMessages)
             
             for try await text in stream {
                 print("📥 Retry chunk: \(text)")

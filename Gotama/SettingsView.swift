@@ -8,12 +8,17 @@ struct SettingsView: View {
     @State private var apiKey: String = ""
     @State private var isApiKeyVisible = false
     @State private var firstName: String = ""
+    @State private var aboutMe: String = ""
+    @State private var goal: String = ""
     @FocusState private var isApiKeyFocused: Bool
     let focusApiKey: Bool
     var onSaved: (() -> Void)?
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
+    
+    private let maxAboutMeLength = 500
+    private let maxGoalLength = 200
     
     init(focusApiKey: Bool = false, onSaved: (() -> Void)? = nil) {
         self.focusApiKey = focusApiKey
@@ -24,9 +29,37 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("First Name", text: $firstName)
+                    TextField("First name", text: $firstName)
                 } header: {
-                    Text("Your Name")
+                    Text("What should I call you?")
+                }
+
+                Section {
+                    TextEditor(text: $goal)
+                        .frame(minHeight: 60)
+                        .onChange(of: goal) {
+                            if goal.count > maxGoalLength {
+                                goal = String(goal.prefix(maxGoalLength))
+                            }
+                        }
+                } header: {
+                    Text("Do you have a goal?")
+                } footer: {
+                    Text("It can be skillful to have a goal (\(goal.count)/\(maxGoalLength) characters)")
+                }
+                
+                Section {
+                    TextEditor(text: $aboutMe)
+                        .frame(minHeight: 100)
+                        .onChange(of: aboutMe) {
+                            if aboutMe.count > maxAboutMeLength {
+                                aboutMe = String(aboutMe.prefix(maxAboutMeLength))
+                            }
+                        }
+                } header: {
+                    Text("Tell me about yourself")
+                } footer: {
+                    Text("I can help you achieve your goal (\(aboutMe.count)/\(maxAboutMeLength) characters)")
                 }
                 
                 Section {
@@ -74,6 +107,8 @@ struct SettingsView: View {
                 if let existingSettings = settings.first {
                     apiKey = existingSettings.anthropicApiKey
                     firstName = existingSettings.firstName
+                    aboutMe = existingSettings.aboutMe
+                    goal = existingSettings.goal
                 }
                 if focusApiKey {
                     isApiKeyFocused = true
@@ -86,14 +121,18 @@ struct SettingsView: View {
         print("💾 Saving settings...")
         print("API Key length: \(apiKey.count)")
         print("First Name: \(firstName)")
+        print("About Me length: \(aboutMe.count)")
+        print("Goal length: \(goal.count)")
         
         if let existingSettings = settings.first {
             print("📝 Updating existing settings")
             existingSettings.anthropicApiKey = apiKey
             existingSettings.firstName = firstName
+            existingSettings.aboutMe = aboutMe
+            existingSettings.goal = goal
         } else {
             print("✨ Creating new settings")
-            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey)
+            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, aboutMe: aboutMe, goal: goal)
             modelContext.insert(newSettings)
         }
         

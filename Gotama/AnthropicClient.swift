@@ -33,12 +33,18 @@ actor AnthropicClient {
         self.apiKey = apiKey
     }
     
-    func sendMessage(_ content: String, previousMessages: [ChatMessage] = []) async throws -> AsyncThrowingStream<String, Error> {
+    func sendMessage(_ content: String, settings: Settings?, previousMessages: [ChatMessage] = []) async throws -> AsyncThrowingStream<String, Error> {
         guard let apiKey = self.apiKey else {
             print("❌ AnthropicClient: API key not configured")
             throw AnthropicError.apiError("API key not configured")
         }
-        print("✅ AnthropicClient: Using API key of length \(apiKey.count)")
+        // print("✅ AnthropicClient: Using API key of length \(apiKey.count)")
+        
+        if let settings = settings {
+            print("👤 User settings - First Name: '\(settings.firstName)'")
+        } else {
+            print("⚠️ No user settings provided")
+        }
         
         guard let url = URL(string: "\(baseURL)/messages") else {
             throw AnthropicError.invalidURL
@@ -60,7 +66,7 @@ actor AnthropicClient {
         
         let body: [String: Any] = [
             "model": model,
-            "system": GotamaPrompt.systemPrompt,
+            "system": GotamaPrompt.buildPrompt(settings: settings),
             "messages": allMessages,
             "max_tokens": 1024,
             "stream": true
