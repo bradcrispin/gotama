@@ -13,7 +13,6 @@ struct ChatView: View {
     @State private var isTextFromRecognition = false
     @State private var errorMessage: String?
     @Query private var settings: [Settings]
-    @State private var showSettingsOnAppear = false
     @State private var showSettings = false
     @State private var canCreateNewChat = false
     @Namespace private var animation
@@ -32,12 +31,7 @@ struct ChatView: View {
     @State private var pendingMessageText: String?
     @State private var viewOpacity: Double = 0.0
     @State private var hasAppliedInitialAnimation = false
-    @State private var isOnboarding = false
-    @State private var proposedName: String?
-    @State private var showNameConfirmation = false
-    @State private var showWelcomePart1 = false
-    @State private var showWelcomePart2 = false
-    @State private var showWelcomePart3 = false
+    @State private var onboardingViewModel: OnboardingViewModel?
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -84,9 +78,18 @@ struct ChatView: View {
                                      from: nil,
                                      for: nil)
         
-        // Handle onboarding name collection
-        if isOnboarding {
-            handleOnboardingMessage(trimmedText)
+        // Handle onboarding
+        if let viewModel = onboardingViewModel {
+            Task {
+                let success = await viewModel.processInput(trimmedText)
+                if success && viewModel.isComplete {
+                    await MainActor.run {
+                        // Transition to normal chat
+                        onboardingViewModel = nil
+                        startNewChat()
+                    }
+                }
+            }
             return
         }
         
@@ -113,10 +116,12 @@ struct ChatView: View {
         
         let userMessage = ChatMessage(role: "user", content: trimmedText, createdAt: Date())
         chat?.messages.append(userMessage)
+        userMessage.chat = chat
         chat?.updatedAt = Date()
         
         let assistantMessage = ChatMessage(role: "assistant", content: "", createdAt: Date(), isThinking: true)
         chat?.messages.append(assistantMessage)
+        assistantMessage.chat = chat
         
         isLoading = true
         hasUserScrolled = false // Reset scroll state for new message
@@ -258,7 +263,7 @@ struct ChatView: View {
                                     onRetry: message.error != nil ? { await retryMessage(message) } : nil,
                                     showError: errorMessage == nil,
                                     messageText: $messageText,
-                                    showConfirmation: showNameConfirmation && message.role == "assistant" && message.content.contains("Is that correct?")
+                                    showConfirmation: false
                                 )
                                 .id(message.id)
                                 .transition(.opacity.combined(with: .scale))
@@ -327,30 +332,26 @@ struct ChatView: View {
                             .multilineTextAlignment(.center)
                             .matchedGeometryEffect(id: "greeting", in: animation)
                             .frame(maxWidth: 300)
-                    } else {
+                    } else if let viewModel = onboardingViewModel {
                         VStack(spacing: 16) {
-                            if showWelcomePart1 {
-                                Text("I am Gotama, your AI mindfulness teacher.")
+                            if viewModel.showTitle, let step = viewModel.currentStep {
+                                Text(step.content.title)
                                     .font(.title)
                                     .multilineTextAlignment(.center)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
                             
-                             if showWelcomePart2 {
-                                 Text("I am trained on the earliest Buddhist texts.")
-                                     .font(.title)
-                                     .multilineTextAlignment(.center)
-                                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                             }
-                            
-                            if showWelcomePart3 {
-                                Text("What should I call you?")
+                            if viewModel.showSubtitle, 
+                               let step = viewModel.currentStep,
+                               let subtitle = step.content.subtitle {
+                                Text(subtitle)
                                     .font(.title)
                                     .multilineTextAlignment(.center)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
                         }
                         .frame(maxWidth: 300)
+                        .opacity(viewModel.viewOpacity)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -435,7 +436,11 @@ struct ChatView: View {
         .onAppear {
             // Check if we need to start onboarding
             if settings.first?.firstName.isEmpty ?? true {
-                isOnboarding = true
+                // Reset any existing onboarding view model
+                onboardingViewModel = nil
+                // Create fresh onboarding view model
+                onboardingViewModel = OnboardingViewModel(modelContext: modelContext)
+                onboardingViewModel?.start()
             }
             
             if let chatId = chat?.id {
@@ -462,34 +467,10 @@ struct ChatView: View {
                         hasAppliedInitialAnimation = true
                     }
                     
-                    // Start welcome message animations
-                    if isOnboarding {
+                    if let viewModel = onboardingViewModel {
                         // Start asterisk animation
                         startAsteriskAnimation()
-                        
-                        showWelcomePart1 = true
-                            
-                        // Animate second part after first part
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            withAnimation(.easeOut(duration: 0.8)) {
-                                showWelcomePart2 = true
-                            }
-                            
-                            // Animate third part after second part
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                                withAnimation(.easeOut(duration: 0.8)) {
-                                    showWelcomePart3 = true
-                                }
-                                
-                                // Focus keyboard after a moment to read
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    isFocused = true
-                                    
-                                    // Optional: Add subtle haptic feedback
-                                    softHaptics.impactOccurred(intensity: 0.4)
-                                }
-                            }
-                        }
+                        viewModel.start()
                     } else {
                         startAsteriskAnimation()
                     }
@@ -501,22 +482,13 @@ struct ChatView: View {
                     await anthropic.configure(with: settings.anthropicApiKey)
                 }
             }
-            
-            // Only show settings sheet if API key is missing
-            if settings.first?.anthropicApiKey.isEmpty ?? true {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    showSettingsOnAppear = true
-                }
-            }
         }
         .onDisappear {
             if let chat = chat, chat.messages.isEmpty {
                 modelContext.delete(chat)
             }
         }
-        .sheet(isPresented: $showSettingsOnAppear) {
-            SettingsView(focusApiKey: false)
-        }
+        // IF user clicks error message for API key, show settings
         .sheet(isPresented: $showSettings) {
             SettingsView(focusApiKey: true) {
                 // Clear error if API key is now configured
@@ -533,12 +505,14 @@ struct ChatView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    TextField(isOnboarding ? "Your first name" : "Chat with Gotama", text: $messageText, axis: .vertical)
+                    TextField(onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
+                             text: $messageText, axis: .vertical)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
+                        .opacity(onboardingViewModel?.showInput ?? true ? 1 : 0)
                         .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
                         
                         // .tint(.accent)
@@ -825,48 +799,21 @@ struct ChatView: View {
         softHaptics.impactOccurred()
     }
     
-    private func handleOnboardingMessage(_ text: String) {
-        let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func startNewChat() {
+        // Reset asterisk animation
+        asteriskRotation = 45.0
+        isAsteriskAnimating = false
         
-        // Save the name
-        if let settings = settings.first {
-            settings.firstName = name
-        } else {
-            let newSettings = Settings(firstName: name)
-            modelContext.insert(newSettings)
-        }
-        
-        // First fade out current content
-        withAnimation(.easeOut(duration: 0.3)) {
-            viewOpacity = 0
-        }
-        
-        // After fade out, update state and prepare for new content
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            // End onboarding
-            isOnboarding = false
-            
-            // Reset chat state
-            if let currentChat = chat {
-                modelContext.delete(currentChat)
-            }
-            
-            // Reset asterisk animation
-            asteriskRotation = 45.0
-            isAsteriskAnimating = false
-            
+        withAnimation(.spring(duration: 0.4)) {
             chat = nil
             messageText = ""
             errorMessage = nil
             canCreateNewChat = false
-            
-            // Start asterisk animation
+        }
+        
+        // Start asterisk animation after transition
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             startAsteriskAnimation()
-            
-            // Fade in new content
-            withAnimation(.easeIn(duration: 0.3)) {
-                viewOpacity = 1
-            }
         }
     }
 }

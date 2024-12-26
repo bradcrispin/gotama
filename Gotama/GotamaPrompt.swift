@@ -1,3 +1,7 @@
+import Foundation
+import SwiftData
+
+@MainActor
 struct GotamaPrompt {
     private static let basePrompt = """
     You are Gotama, a mindfulness teacher based on the historical Buddha in the earliest days of his teaching career.
@@ -108,7 +112,13 @@ struct GotamaPrompt {
     - My goal: %@
     """
     
-    static func buildPrompt(settings: Settings?) -> String {
+    private static let journalInfo = """
+    
+    My recent journal entries:
+    %@
+    """
+    
+    static func buildPrompt(settings: Settings?, modelContext: ModelContext? = nil) -> String {
         var components: [String] = []
         
         // Add base prompt
@@ -126,6 +136,30 @@ struct GotamaPrompt {
             
             if !settings.goal.isEmpty {
                 components.append(String(format: goalInfo, settings.goal))
+            }
+            
+            // Add journal entries if enabled
+            if settings.journalEnabled, let context = modelContext {
+                let descriptor = FetchDescriptor<JournalEntry>(sortBy: [SortDescriptor(\JournalEntry.updatedAt, order: .reverse)])
+                if let entries = try? context.fetch(descriptor) {
+                    var journalText = ""
+                    var totalLength = 0
+                    let maxLength = 1000
+                    
+                    for entry in entries {
+                        let entryText = "- \(entry.text)\n"
+                        if totalLength + entryText.count > maxLength {
+                            // If adding this entry would exceed limit, stop
+                            break
+                        }
+                        journalText += entryText
+                        totalLength += entryText.count
+                    }
+                    
+                    if !journalText.isEmpty {
+                        components.append(String(format: journalInfo, journalText))
+                    }
+                }
             }
         }
         

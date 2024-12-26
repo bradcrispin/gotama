@@ -20,80 +20,126 @@ struct ContentView: View {
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
     
+    private var currentStreak: Int {
+        guard !entries.isEmpty else { return 0 }
+        
+        // Check if there's an entry today
+        if !entries.contains(where: { $0.isFromToday }) {
+            return 0
+        }
+        
+        // Count consecutive days
+        var streak = 1
+        var currentDate = Calendar.current.startOfDay(for: Date())
+        
+        while true {
+            currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate)!
+            let hasEntry = entries.contains { entry in
+                Calendar.current.isDate(entry.createdAt, inSameDayAs: currentDate)
+            }
+            if hasEntry {
+                streak += 1
+            } else {
+                break
+            }
+        }
+        
+        return streak
+    }
+    
+    private var streakMessage: String {
+        if entries.isEmpty {
+            return "Journal your practice to change your life"
+        }
+        
+        if let latest = entries.first {
+            if latest.isFromToday {
+                if currentStreak > 1 {
+                    return "\(currentStreak) days"
+                } else {
+                    return "The training is to pay attention"
+                }
+            } else {
+                return "Training becomes habit"
+            }
+        }
+        
+        return ""
+    }
+    
+    private var showLeafIcon: Bool {
+        currentStreak >= 3
+    }
+    
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
                 List {
-                    // Chats Section
-                    Section {
-                        if isChatSectionExpanded {
-                            ForEach(chats) { chat in
-                                NavigationLink(value: ChatDestination.existing(chat)) {
-                                    ChatRow(chat: chat)
+                    // Journal Section
+                    if let settings = settings.first, settings.journalEnabled {
+                        Section {
+                            ForEach(entries) { entry in
+                                NavigationLink(value: JournalDestination.existing(entry)) {
+                                    JournalEntryRow(entry: entry)
                                 }
                             }
-                            .onDelete(perform: deleteChats)
-                        }
-                    } header: {
-                        Button {
-                            withAnimation(.spring(duration: 0.3)) {
-                                isChatSectionExpanded.toggle()
-                                softHaptics.impactOccurred()
-                            }
-                        } label: {
+                            .onDelete(perform: deleteEntries)
+                        } header: {
                             HStack {
-                                Text("Chats")
+                                Text("Journal")
                                     .font(.title2)
                                     .fontWeight(.semibold)
                                     .foregroundStyle(.primary)
                                     .textCase(nil)
                                     .padding(.leading, -16)
                                 
-                                // if !chats.isEmpty {
-                                //     Text("(\(chats.count))")
-                                //         .foregroundStyle(.primary.opacity(0.7))
-                                //         .font(.subheadline)
-                                // }
+                                if currentStreak > 1 {
+                                    Text("(\(currentStreak) days in a row)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                if showLeafIcon {
+                                    Image(systemName: "leaf.fill")
+                                        .foregroundStyle(.accent.opacity(0.8))
+                                        .font(.caption)
+                                }
                                 
                                 Spacer()
                                 
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(.primary.opacity(0.7))
-                                    .rotationEffect(.degrees(isChatSectionExpanded ? 90 : 0))
-                                    .padding(.trailing, -8)
+                                if entries.isEmpty {
+                                    Button(action: createAndOpenNewEntry) {
+                                        Image(systemName: "square.and.pencil")
+                                            .font(.title3)
+                                            .padding(.trailing, -16)
+                                    }
+                                }
                             }
+                            .padding(.vertical, 8)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.vertical, 8)
                     }
                     
-                    // Journal Section
-                    // Section {
-                    //     ForEach(entries) { entry in
-                    //         NavigationLink(value: JournalDestination.existing(entry)) {
-                    //             JournalEntryRow(entry: entry)
-                    //         }
-                    //     }
-                    //     .onDelete(perform: deleteEntries)
-                    // } header: {
-                    //     HStack {
-                    //         Text("Journal")
-                    //             .font(.title2)
-                    //             .fontWeight(.semibold)
-                    //             .foregroundStyle(.primary)
-                    //             .textCase(nil)
-                    //             .padding(.leading, -16)
-
-                    //         Spacer()
+                    // Chats Section
+                    Section {
+                        ForEach(chats) { chat in
+                            NavigationLink(value: ChatDestination.existing(chat)) {
+                                ChatRow(chat: chat)
+                            }
+                        }
+                        .onDelete(perform: deleteChats)
+                    } header: {
+                        HStack {
+                            Text("Chats")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .textCase(nil)
+                                .padding(.leading, -16)
                             
-                    //         Button(action: createAndOpenNewEntry) {
-                    //             Image(systemName: "square.and.pencil")
-                    //                 .font(.title3)
-                    //                 .padding(.trailing, -16)
-                    //         }
-                    //     }
-                    //     .padding(.vertical, 8)
-                    // }
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                    }
                 }
                 .listStyle(.insetGrouped)
                 .navigationTitle("Home")
@@ -185,7 +231,7 @@ struct ContentView: View {
     
     private func deleteChats(offsets: IndexSet) {
         haptics.impactOccurred()
-        print("🗑️ Deleting chats at offsets: \(offsets)")
+        print("🗑��� Deleting chats at offsets: \(offsets)")
         withAnimation(.easeInOut(duration: 0.3)) {
             for index in offsets {
                 print("🗑️ Deleting chat: \(chats[index].id)")
@@ -199,15 +245,12 @@ struct ChatRow: View {
     let chat: Chat
     
     var body: some View {
-        HStack {
-            Text(chat.title)
-                .fontWeight(.medium)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(height: 52)
-        .padding(.vertical, 4)
+        Text(chat.title)
+            .fontWeight(.medium)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 12)
     }
 }
 
@@ -216,24 +259,36 @@ struct JournalEntryRow: View {
     
     var previewText: String {
         if entry.text.isEmpty {
-            return "Click to continue"
+            return "Begin today's reflection"
         }
         let firstLine = entry.text.split(separator: "\n", maxSplits: 1)[0]
-        let truncated = firstLine.prefix(50)
-        return truncated.trimmingCharacters(in: .whitespacesAndNewlines) + 
-               (truncated.count < firstLine.count ? "..." : "")
+        return String(firstLine)
+    }
+    
+    private var dateDescription: String {
+        if entry.isFromToday {
+            return "Today"
+        } else if entry.isFromYesterday {
+            return "Yesterday"
+        } else {
+            return entry.createdAt.formatted(.dateTime.month().day())
+        }
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(previewText)
-                .font(.headline)
-            Text(entry.createdAt, format: .dateTime.month().day().year())
+        HStack {
+            Text(dateDescription)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .frame(width: 80, alignment: .leading)
+            
+            Text(previewText)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(.primary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 12)
     }
 } 
 

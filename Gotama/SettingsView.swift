@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var firstName: String = ""
     @State private var aboutMe: String = ""
     @State private var goal: String = ""
+    @State private var journalEnabled: Bool = false
     @FocusState private var isApiKeyFocused: Bool
     let focusApiKey: Bool
     var onSaved: (() -> Void)?
@@ -73,6 +74,12 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Toggle("Journal", isOn: $journalEnabled)
+                } header: {
+                    Text("Tools")
+                }
+                
+                Section {
                     HStack {
                         if isApiKeyVisible {
                             TextField("API Key", text: $apiKey)
@@ -119,6 +126,7 @@ struct SettingsView: View {
                     firstName = existingSettings.firstName
                     aboutMe = existingSettings.aboutMe
                     goal = existingSettings.goal
+                    journalEnabled = existingSettings.journalEnabled
                 }
                 if focusApiKey {
                     isApiKeyFocused = true
@@ -133,6 +141,7 @@ struct SettingsView: View {
         print("First Name: \(firstName)")
         print("About Me length: \(aboutMe.count)")
         print("Goal length: \(goal.count)")
+        print("Journal: \(journalEnabled)")
         
         if let existingSettings = settings.first {
             print("📝 Updating existing settings")
@@ -140,9 +149,10 @@ struct SettingsView: View {
             existingSettings.firstName = firstName
             existingSettings.aboutMe = aboutMe
             existingSettings.goal = goal
+            existingSettings.journalEnabled = journalEnabled
         } else {
             print("✨ Creating new settings")
-            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, aboutMe: aboutMe, goal: goal)
+            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, aboutMe: aboutMe, goal: goal, journalEnabled: journalEnabled)
             modelContext.insert(newSettings)
         }
         

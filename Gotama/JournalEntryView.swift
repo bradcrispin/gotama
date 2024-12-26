@@ -7,6 +7,7 @@ struct JournalEntryView: View {
     @State private var entry: JournalEntry?
     @State private var text: String = ""
     @FocusState private var isFocused: Bool
+    @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -23,7 +24,7 @@ struct JournalEntryView: View {
             .onChange(of: text) {
                 if entry == nil {
                     softHaptics.impactOccurred(intensity: 0.5)
-                    let newEntry = JournalEntry(text: text)
+                    let newEntry = createNewEntry()
                     modelContext.insert(newEntry)
                     entry = newEntry
                 } else {
@@ -42,6 +43,26 @@ struct JournalEntryView: View {
                     modelContext.delete(entry)
                 }
             }
+    }
+    
+    private func createNewEntry() -> JournalEntry {
+        let newEntry = JournalEntry(text: text)
+        
+        // Calculate streak
+        if let lastEntry = entries.first {
+            if lastEntry.isFromYesterday {
+                newEntry.isPartOfStreak = true
+                newEntry.streakDay = lastEntry.streakDay + 1
+            } else if !lastEntry.isFromToday {
+                newEntry.streakDay = 1
+                newEntry.isPartOfStreak = true
+            }
+        } else {
+            newEntry.streakDay = 1
+            newEntry.isPartOfStreak = true
+        }
+        
+        return newEntry
     }
 }
 

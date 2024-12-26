@@ -38,7 +38,6 @@ actor AnthropicClient {
             print("❌ AnthropicClient: API key not configured")
             throw AnthropicError.apiError("API key not configured")
         }
-        // print("✅ AnthropicClient: Using API key of length \(apiKey.count)")
         
         if let settings = settings {
             print("👤 User settings - First Name: '\(settings.firstName)'")
@@ -64,9 +63,19 @@ actor AnthropicClient {
             print("  \(i + 1). [\(msg["role"] ?? "unknown")]: \(msg["content"] ?? "")")
         }
         
+        // Get model context from the first message's chat if available
+        // and capture it immediately on the main actor
+        let systemPrompt = await MainActor.run {
+            if let context = previousMessages.first?.chat?.modelContext {
+                return GotamaPrompt.buildPrompt(settings: settings, modelContext: context)
+            } else {
+                return GotamaPrompt.buildPrompt(settings: settings, modelContext: nil)
+            }
+        }
+        
         let body: [String: Any] = [
             "model": model,
-            "system": GotamaPrompt.buildPrompt(settings: settings),
+            "system": systemPrompt,
             "messages": allMessages,
             "max_tokens": 1024,
             "stream": true
