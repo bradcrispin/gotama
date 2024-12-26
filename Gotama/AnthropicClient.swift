@@ -200,6 +200,12 @@ actor AnthropicClient {
                 }
             }
             task.resume()
+            
+            // Store task in continuation for cancellation
+            continuation.onTermination = { @Sendable _ in
+                print("🛑 Cancelling API request")
+                task.cancel()
+            }
         }
     }
 } 

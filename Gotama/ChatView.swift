@@ -27,6 +27,8 @@ struct ChatView: View {
     @State private var recognitionTask: SFSpeechRecognitionTask?
     @State private var audioEngine = AVAudioEngine()
     @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    @State private var currentTask: Task<Void, Never>?
+    @State private var pendingMessageText: String?
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -34,7 +36,7 @@ struct ChatView: View {
     
     private func updateCanCreateNewChat() {
         if let currentChat = chat {
-            canCreateNewChat = currentChat.messages.contains(where: { $0.role == "assistant" && ($0.isTyping ?? false) == false })
+            canCreateNewChat = currentChat.messages.contains(where: { $0.role == "assistant" && ($0.isThinking ?? false) == false })
         } else {
             canCreateNewChat = false
         }
@@ -59,6 +61,9 @@ struct ChatView: View {
         guard !trimmedText.isEmpty else { return }
         
         haptics.impactOccurred()
+        
+        // Store the message text before clearing
+        pendingMessageText = trimmedText
         
         // Clear the text input immediately
         messageText = ""
@@ -95,13 +100,13 @@ struct ChatView: View {
         chat?.messages.append(userMessage)
         chat?.updatedAt = Date()
         
-        let assistantMessage = ChatMessage(role: "assistant", content: "", createdAt: Date(), isTyping: true)
+        let assistantMessage = ChatMessage(role: "assistant", content: "", createdAt: Date(), isThinking: true)
         chat?.messages.append(assistantMessage)
         
         isLoading = true
         hasUserScrolled = false // Reset scroll state for new message
         
-        Task {
+        currentTask = Task {
             // Configure API key before sending message
             if let settings = settings.first {
                 await anthropic.configure(with: settings.anthropicApiKey)
@@ -126,7 +131,7 @@ struct ChatView: View {
                         let initialDelay = Date().timeIntervalSince(startTime)
                         print("⏱️ First chunk received after \(String(format: "%.2f", initialDelay))s")
                         await MainActor.run {
-                            assistantMessage.isTyping = false
+                            assistantMessage.isThinking = false
                             assistantMessage.content = ""
                             softHaptics.impactOccurred()
                             
@@ -173,11 +178,45 @@ struct ChatView: View {
             } catch {
                 print("❌ Stream error: \(error)")
                 await MainActor.run {
-                    assistantMessage.isTyping = false
+                    assistantMessage.isThinking = false
                     handleError(error, for: assistantMessage)
                 }
             }
+            
+            await MainActor.run {
+                currentTask = nil
+            }
         }
+    }
+    
+    private func stopGeneration() {
+        // Use success haptic for a satisfying feel
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        // Cancel the current task
+        currentTask?.cancel()
+        currentTask = nil
+        
+        // Remove the last two messages without animation
+        if let existingChat = chat {
+            let messages = existingChat.messages
+            if messages.count >= 2,
+               messages[messages.count - 1].role == "assistant",
+               messages[messages.count - 2].role == "user" {
+                withAnimation(nil) { // Disable animation
+                    existingChat.messages.removeLast(2)
+                }
+            }
+        }
+        
+        // Restore the message text
+        if let pendingText = pendingMessageText {
+            messageText = pendingText
+            pendingMessageText = nil
+        }
+        
+        isLoading = false
     }
     
     var body: some View {
@@ -250,7 +289,7 @@ struct ChatView: View {
                     .safeAreaInset(edge: .bottom) {
                         inputArea
                     }
-                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+                    .transition(.opacity.animation(.easeInOut(duration: 0.3)))
                 }
             } else {
                 VStack(spacing: 24) {
@@ -288,7 +327,7 @@ struct ChatView: View {
                 .safeAreaInset(edge: .bottom) {
                     inputArea
                 }
-                .transition(.asymmetric(insertion: .move(edge: .leading), removal: .opacity))
+                .transition(.opacity.animation(.easeInOut(duration: 0.3)))
             }
         }
         .animation(.spring(duration: 0.4), value: chat?.messages.isEmpty)
@@ -438,7 +477,9 @@ struct ChatView: View {
                     HStack {
                         Spacer()
                         Button {
-                            if isRecording {
+                            if isLoading {
+                                stopGeneration()
+                            } else if isRecording {
                                 stopDictation()
                             } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 startDictation()
@@ -446,14 +487,14 @@ struct ChatView: View {
                                 sendMessage()
                             }
                         } label: {
-                            Image(systemName: isRecording ? "mic.fill" : 
-                                  (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill"))
+                            Image(systemName: isLoading ? "stop.circle.fill" :
+                                  (isRecording ? "mic.fill" : 
+                                   (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill")))
                                 .font(.title2)
-                                .foregroundColor(isLoading ? .secondary : (isRecording ? .white : .accent))
+                                .foregroundColor(isLoading ? Color(white: 0.6) : (isRecording ? .white : .accent))
                                 .symbolEffect(.bounce, value: isRecording)
                                 .modifier(PulseEffect(isActive: isRecording))
                         }
-                        .disabled(isLoading)
                         .padding(.trailing, 12)
                     }
                 }
@@ -708,7 +749,7 @@ struct MessageBubble: View {
             }
             
             VStack(alignment: message.role == "user" ? .trailing : .leading) {
-                if message.isTyping == true {
+                if message.isThinking == true {
                     TypingIndicator()
                         .padding(.vertical, 4)
                         .padding(.horizontal, 8)

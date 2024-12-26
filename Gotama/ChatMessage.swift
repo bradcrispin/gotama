@@ -7,14 +7,14 @@ final class ChatMessage {
     var content: String
     var createdAt: Date
     var error: String?
-    var isTyping: Bool?
+    var isThinking: Bool?
     var chat: Chat?
     
-    init(role: String = "user", content: String = "", createdAt: Date = Date(), error: String? = nil, isTyping: Bool? = nil) {
+    init(role: String = "user", content: String = "", createdAt: Date = Date(), error: String? = nil, isThinking: Bool? = nil) {
         self.role = role
         self.content = content
         self.createdAt = createdAt
         self.error = error
-        self.isTyping = isTyping
+        self.isThinking = isThinking
     }
 } 
