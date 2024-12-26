@@ -16,4 +16,27 @@ final class Settings {
         self.goal = goal
         self.journalEnabled = journalEnabled
     }
+    
+    // Helper method to ensure single Settings instance
+    static func getOrCreate(modelContext: ModelContext) throws -> Settings {
+        let descriptor = FetchDescriptor<Settings>()
+        let existingSettings = try modelContext.fetch(descriptor)
+        
+        if let settings = existingSettings.first {
+            // If there are multiple settings objects (shouldn't happen), clean up extras
+            if existingSettings.count > 1 {
+                print("⚠️ Found multiple settings objects, cleaning up...")
+                for extraSettings in existingSettings.dropFirst() {
+                    modelContext.delete(extraSettings)
+                }
+            }
+            return settings
+        }
+        
+        // Create new settings if none exist
+        let newSettings = Settings()
+        modelContext.insert(newSettings)
+        try modelContext.save()
+        return newSettings
+    }
 } 

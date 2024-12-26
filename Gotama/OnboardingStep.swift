@@ -29,6 +29,7 @@ import SwiftData
         ]
     }
     
+    @MainActor
     func start() {
         guard let step = currentStep else { return }
         
@@ -43,28 +44,32 @@ import SwiftData
             viewOpacity = 1.0
         }
         
-        // Animate title after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        // Schedule animations
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.3))
+            
+            // Animate title
             withAnimation(.easeOut(duration: step.animationDuration)) {
-                self.showTitle = true
+                showTitle = true
             }
             
+            try? await Task.sleep(for: .seconds(1.0))
+            
             // Animate subtitle
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                withAnimation(.easeOut(duration: step.animationDuration)) {
-                    self.showSubtitle = true
-                }
-                
-                // Show input after content is displayed
-                DispatchQueue.main.asyncAfter(deadline: .now() + step.delayBeforeInput) {
-                    withAnimation(.easeOut(duration: step.animationDuration)) {
-                        self.showInput = true
-                    }
-                }
+            withAnimation(.easeOut(duration: step.animationDuration)) {
+                showSubtitle = true
+            }
+            
+            try? await Task.sleep(for: .seconds(step.delayBeforeInput))
+            
+            // Show input
+            withAnimation(.easeOut(duration: step.animationDuration)) {
+                showInput = true
             }
         }
     }
     
+    @MainActor
     func processInput(_ input: String) async -> Bool {
         guard let step = currentStep else { return false }
         
@@ -79,12 +84,13 @@ import SwiftData
                 viewOpacity = 0.0
             }
             
+            // Wait for fade out
+            try? await Task.sleep(for: .seconds(0.3))
+            
             // Move to next step
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                self.currentStepIndex += 1
-                if !self.isComplete {
-                    self.start()
-                }
+            currentStepIndex += 1
+            if !isComplete {
+                start()
             }
         }
         
@@ -95,7 +101,7 @@ import SwiftData
 
 struct OnboardingContent {
     let title: String
-    let subtitle: String?
+    let subtitles: [String]
     let inputPlaceholder: String
     let inputType: OnboardingInputType
 }
@@ -112,7 +118,7 @@ struct OnboardingStep: Identifiable {
     let content: OnboardingContent
     let isOptional: Bool
     let validate: (String) -> Bool
-    let process: (String, ModelContext) async -> Bool
+    let process: @MainActor (String, ModelContext) async -> Bool
     let animationDuration: Double
     let delayBeforeInput: Double
     
@@ -122,30 +128,20 @@ struct OnboardingStep: Identifiable {
             id: 1,
             content: OnboardingContent(
                 title: "Hi, I am Gotama.",
-                subtitle: "I teach mindfulness. What should I call you?",
+                subtitles: ["I teach mindfulness.", "What should I call you?"],
                 inputPlaceholder: "Your first name",
                 inputType: .name
             ),
             isOptional: false,
             validate: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty },
-            process: { name, context in
+            process: { @MainActor name, context in
                 let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
                 do {
-                    // Try to fetch existing settings
-                    let descriptor = FetchDescriptor<Settings>()
-                    let existingSettings = try context.fetch(descriptor)
-                    
-                    if let settings = existingSettings.first {
-                        // Update existing settings
-                        settings.firstName = trimmedName
-                    } else {
-                        // Create new settings if none exist
-                        let newSettings = Settings(firstName: trimmedName)
-                        context.insert(newSettings)
-                    }
-                    
-                    // Try to save changes explicitly
+                    // Use the new helper method to ensure single Settings instance
+                    let settings = try Settings.getOrCreate(modelContext: context)
+                    settings.firstName = trimmedName
                     try context.save()
+                    print("✅ Successfully saved name: \(trimmedName)")
                     return true
                 } catch {
                     print("❌ Error processing name step: \(error)")

@@ -341,13 +341,14 @@ struct ChatView: View {
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
                             
-                            if viewModel.showSubtitle, 
-                               let step = viewModel.currentStep,
-                               let subtitle = step.content.subtitle {
-                                Text(subtitle)
-                                    .font(.title)
-                                    .multilineTextAlignment(.center)
-                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            if viewModel.showSubtitle, let step = viewModel.currentStep {
+                                ForEach(Array(step.content.subtitles.enumerated()), id: \.offset) { index, subtitle in
+                                    Text(subtitle)
+                                        .font(.title)
+                                        .multilineTextAlignment(.center)
+                                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                                        .animation(.easeOut(duration: step.animationDuration).delay(Double(index) * 0.5), value: viewModel.showSubtitle)
+                                }
                             }
                         }
                         .frame(maxWidth: 300)
@@ -435,14 +436,21 @@ struct ChatView: View {
         }
         .onAppear {
             // Check if we need to start onboarding
-            if settings.first?.firstName.isEmpty ?? true {
-                // Reset any existing onboarding view model
-                onboardingViewModel = nil
-                // Create fresh onboarding view model
-                onboardingViewModel = OnboardingViewModel(modelContext: modelContext)
-                onboardingViewModel?.start()
+            Task {
+                do {
+                    let settings = try Settings.getOrCreate(modelContext: modelContext)
+                    if settings.firstName.isEmpty {
+                        // Reset any existing onboarding view model
+                        onboardingViewModel = nil
+                        // Create fresh onboarding view model
+                        onboardingViewModel = OnboardingViewModel(modelContext: modelContext)
+                        onboardingViewModel?.start()
+                    }
+                } catch {
+                    print("❌ Error checking settings: \(error)")
+                }
             }
-            
+
             if let chatId = chat?.id {
                 print("📱 ChatView appeared for chat: \(chatId)")
                 updateCanCreateNewChat()
@@ -477,9 +485,13 @@ struct ChatView: View {
                 }
             }
             
-            if let settings = settings.first {
-                Task {
+            // Configure Anthropic client
+            Task {
+                do {
+                    let settings = try Settings.getOrCreate(modelContext: modelContext)
                     await anthropic.configure(with: settings.anthropicApiKey)
+                } catch {
+                    print("❌ Error configuring Anthropic client: \(error)")
                 }
             }
         }
