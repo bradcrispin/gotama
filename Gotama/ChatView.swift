@@ -240,12 +240,14 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(existingChat.messages.sorted(by: { $0.createdAt < $1.createdAt })) { message in
-                                MessageBubble(message: message, 
-                                            onRetry: message.error != nil ? {
-                                                await retryMessage(message)
-                                            } : nil,
-                                            showError: errorMessage == nil)
-                                    .id(message.id)
+                                MessageBubble(
+                                    message: message,
+                                    onRetry: message.error != nil ? { await retryMessage(message) } : nil,
+                                    showError: errorMessage == nil,
+                                    messageText: $messageText
+                                )
+                                .id(message.id)
+                                .transition(.opacity.combined(with: .scale))
                             }
                         }
                         .padding()
@@ -259,6 +261,7 @@ struct ChatView: View {
                                 showScrollToBottom = true
                             }
                         }
+                        .animation(.smooth(duration: 0.3), value: existingChat.messages)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .onAppear {
@@ -753,6 +756,12 @@ struct MessageBubble: View {
     var onRetry: (() async -> Void)?
     let showError: Bool
     @State private var showCopied = false
+    @State private var showDeleteConfirmation = false
+    @State private var showEditConfirmation = false
+    @Environment(\.modelContext) private var modelContext
+    
+    // Add binding to messageText from ChatView
+    @Binding var messageText: String
     
     var body: some View {
         HStack {
@@ -771,14 +780,42 @@ struct MessageBubble: View {
                         .padding(.vertical, 8)
                         .padding(.horizontal, message.role == "user" ? 12 : 16)
                         .contextMenu(menuItems: {
-                            if message.role == "assistant" {
+                            Button {
+                                UIPasteboard.general.string = message.content
+                            } label: {
+                                Label("Copy", systemImage: "doc.on.doc")
+                            }
+                            
+                            if message.role == "user" {
                                 Button {
-                                    UIPasteboard.general.string = message.content
+                                    showEditConfirmation = true
                                 } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                
+                                Button(role: .destructive) {
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
                         })
+                        .alert("Edit Message", isPresented: $showEditConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Edit", role: .destructive) {
+                                editMessage()
+                            }
+                        } message: {
+                            Text("Editing and resending this message will delete all messages that follow")
+                        }
+                        .alert("Delete Message", isPresented: $showDeleteConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Delete", role: .destructive) {
+                                deleteMessageAndFollowing()
+                            }
+                        } message: {
+                            Text("Deleting this message will delete all messages that follow")
+                        }
                 }
                 
                 if showError, let error = message.error {
@@ -809,6 +846,49 @@ struct MessageBubble: View {
                 Spacer()
             }
         }
+    }
+    
+    private func editMessage() {
+        print("✏️ Starting message edit")
+        
+        // Set the message text for editing
+        messageText = message.content
+        print("📝 Loaded message text for editing: \(messageText)")
+        
+        // Delete this and following messages
+        deleteMessageAndFollowing()
+    }
+    
+    private func deleteMessageAndFollowing() {
+        guard let chat = message.chat else {
+            print("❌ Delete failed: No chat associated with message")
+            return
+        }
+        
+        // Find the index of the current message
+        guard let currentIndex = chat.messages.firstIndex(where: { $0.id == message.id }) else {
+            print("❌ Delete failed: Could not find message index in chat")
+            return
+        }
+        
+        print("🗑️ Deleting message at index \(currentIndex) and \(chat.messages.count - currentIndex - 1) following messages")
+        
+        // Get all messages from current to end
+        let messagesToDelete = Array(chat.messages[currentIndex...])
+        print("📝 Messages to delete: \(messagesToDelete.count)")
+        
+        // Remove messages from chat's messages array first
+        withAnimation {
+            chat.messages.removeSubrange(currentIndex...)
+        }
+        
+        // Then delete from model context
+        for message in messagesToDelete {
+            print("🗑️ Deleting message: \(message.id)")
+            modelContext.delete(message)
+        }
+        
+        print("✅ Deletion complete. Remaining messages: \(chat.messages.count)")
     }
 }
 
