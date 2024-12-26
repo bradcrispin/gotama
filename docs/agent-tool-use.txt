@@ -117,9 +117,38 @@ Any important caveats or limitations, such as what information the tool does not
 Prioritize descriptions over examples. While you can include examples of how to use a tool in its description or in the accompanying prompt, this is less important than having a clear and comprehensive explanation of the tool’s purpose and parameters. Only add examples after you’ve fully fleshed out the description.
 
 Example of a good tool description
+{
+  "name": "get_stock_price",
+  "description": "Retrieves the current stock price for a given ticker symbol. The ticker symbol must be a valid symbol for a publicly traded company on a major US stock exchange like NYSE or NASDAQ. The tool will return the latest trade price in USD. It should be used when the user asks about the current or most recent price of a specific stock. It will not provide any other information about the stock or company.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+      }
+    },
+    "required": ["ticker"]
+  }
+}
 
 
 Example poor tool description
+
+{
+  "name": "get_stock_price",
+  "description": "Gets the stock price for a ticker.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string"
+      }
+    },
+    "required": ["ticker"]
+  }
+}
+
 
 The good description clearly explains what the tool does, when to use it, what data it returns, and what the ticker parameter means. The poor description is too brief and leaves Claude with many open questions about the tool’s behavior and usage.
 
@@ -239,10 +268,200 @@ Here are a few code examples demonstrating various tool use patterns and techniq
 
 
 Single tool example
+curl https://api.anthropic.com/v1/messages \
+     --header "x-api-key: $ANTHROPIC_API_KEY" \
+     --header "anthropic-version: 2023-06-01" \
+     --header "content-type: application/json" \
+     --data \
+'{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "tools": [{
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "The unit of temperature, either \"celsius\" or \"fahrenheit\""
+                }
+            },
+            "required": ["location"]
+        }
+    }],
+    "messages": [{"role": "user", "content": "What is the weather like in San Francisco?"}]
+}'
+Claude will return a response similar to:
 
+JSON
+
+{
+  "id": "msg_01Aq9w938a90dw8q",
+  "model": "claude-3-5-sonnet-20241022",
+  "stop_reason": "tool_use",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "<thinking>I need to call the get_weather function, and the user wants SF, which is likely San Francisco, CA.</thinking>"
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01A09q90qw90lq917835lq9",
+      "name": "get_weather",
+      "input": {"location": "San Francisco, CA", "unit": "celsius"}
+    }
+  ]
+}
+You would then need to execute the get_weather function with the provided input, and return the result in a new user message:
+
+
+Shell
+
+Python
+
+curl https://api.anthropic.com/v1/messages \
+     --header "x-api-key: $ANTHROPIC_API_KEY" \
+     --header "anthropic-version: 2023-06-01" \
+     --header "content-type: application/json" \
+     --data \
+'{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "tools": [
+        {
+            "name": "get_weather",
+            "description": "Get the current weather in a given location",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "The unit of temperature, either \"celsius\" or \"fahrenheit\""
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    ],
+    "messages": [
+        {
+            "role": "user",
+            "content": "What is the weather like in San Francisco?"
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "<thinking>I need to use get_weather, and the user wants SF, which is likely San Francisco, CA.</thinking>"
+                },
+                {
+                    "type": "tool_use",
+                    "id": "toolu_01A09q90qw90lq917835lq9",
+                    "name": "get_weather",
+                    "input": {
+                        "location": "San Francisco, CA",
+                        "unit": "celsius"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "toolu_01A09q90qw90lq917835lq9",
+                    "content": "15 degrees"
+                }
+            ]
+        }
+    ]
+}'
+This will print Claude’s final response, incorporating the weather data:
+
+JSON
+
+{
+  "id": "msg_01Aq9w938a90dw8q",
+  "model": "claude-3-5-sonnet-20241022",
+  "stop_reason": "stop_sequence",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "The current weather in San Francisco is 15 degrees Celsius (59 degrees Fahrenheit). It's a cool day in the city by the bay!"
+    }
+  ]
+}
 
 Multiple tool example
+You can provide Claude with multiple tools to choose from in a single request. Here’s an example with both a get_weather and a get_time tool, along with a user query that asks for both.
 
+
+Shell
+
+Python
+
+curl https://api.anthropic.com/v1/messages \
+     --header "x-api-key: $ANTHROPIC_API_KEY" \
+     --header "anthropic-version: 2023-06-01" \
+     --header "content-type: application/json" \
+     --data \
+'{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "tools": [{
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "The unit of temperature, either 'celsius' or 'fahrenheit'"
+                }
+            },
+            "required": ["location"]
+        }
+    },
+    {
+        "name": "get_time",
+        "description": "Get the current time in a given time zone",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "timezone": {
+                    "type": "string",
+                    "description": "The IANA time zone name, e.g. America/Los_Angeles"
+                }
+            },
+            "required": ["timezone"]
+        }
+    }],
+    "messages": [{
+        "role": "user",
+        "content": "What is the weather like right now in New York? Also what time is it there?"
+    }]
+}'
+In this case, Claude will most likely try to use two separate tools, one at a time — get_weather and then get_time — in order to fully answer the user’s question. However, it will also occasionally output two tool_use blocks at once, particularly if they are not dependent on each other. You would need to execute each tool and return their results in separate tool_result blocks within a single user message.
 
 Missing information
 
@@ -252,8 +471,81 @@ Sequential tools
 
 Chain of thought tool use
 
+Answer the user's request using relevant tools (if they are available). Before calling a tool, do some analysis within \<thinking>\</thinking> tags. First, think about which of the provided tools is the relevant tool to answer the user's request. Second, go through each of the required parameters of the relevant tool and determine if the user has directly provided or given enough information to infer a value. When deciding if the parameter can be inferred, carefully consider all the context to see if it supports a specific value. If all of the required parameters are present or can be reasonably inferred, close the thinking tag and proceed with the tool call. BUT, if one of the values for a required parameter is missing, DO NOT invoke the function (not even with fillers for the missing params) and instead, ask the user to provide the missing parameters. DO NOT ask for more information on optional parameters if it is not provided.
+
 
 JSON mode
+You can use tools to get Claude produce JSON output that follows a schema, even if you don’t have any intention of running that output through a tool or function.
+
+When using tools in this way:
+
+You usually want to provide a single tool
+You should set tool_choice (see Forcing tool use) to instruct the model to explicitly use that tool
+Remember that the model will pass the input to the tool, so the name of the tool and description should be from the model’s perspective.
+The following uses a record_summary tool to describe an image following a particular format.
+
+
+Shell
+
+Python
+
+#!/bin/bash
+IMAGE_URL="https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
+IMAGE_MEDIA_TYPE="image/jpeg"
+IMAGE_BASE64=$(curl "$IMAGE_URL" | base64)
+
+curl https://api.anthropic.com/v1/messages \
+     --header "content-type: application/json" \
+     --header "x-api-key: $ANTHROPIC_API_KEY" \
+     --header "anthropic-version: 2023-06-01" \
+     --data \
+'{
+    "model": "claude-3-sonnet-20240229",
+    "max_tokens": 1024,
+    "tools": [{
+        "name": "record_summary",
+        "description": "Record summary of an image using well-structured JSON.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "key_colors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "r": { "type": "number", "description": "red value [0.0, 1.0]" },
+                            "g": { "type": "number", "description": "green value [0.0, 1.0]" },
+                            "b": { "type": "number", "description": "blue value [0.0, 1.0]" },
+                            "name": { "type": "string", "description": "Human-readable color name in snake_case, e.g. \"olive_green\" or \"turquoise\"" }
+                        },
+                        "required": [ "r", "g", "b", "name" ]
+                    },
+                    "description": "Key colors in the image. Limit to less then four."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Image description. One to two sentences max."
+                },
+                "estimated_year": {
+                    "type": "integer",
+                    "description": "Estimated year that the images was taken, if is it a photo. Only set this if the image appears to be non-fictional. Rough estimates are okay!"
+                }
+            },
+            "required": [ "key_colors", "description" ]
+        }
+    }],
+    "tool_choice": {"type": "tool", "name": "record_summary"},
+    "messages": [
+        {"role": "user", "content": [
+            {"type": "image", "source": {
+                "type": "base64",
+                "media_type": "'$IMAGE_MEDIA_TYPE'",
+                "data": "'$IMAGE_BASE64'"
+            }},
+            {"type": "text", "text": "Describe this image."}
+        ]}
+    ]
+}'
 
 ​
 Pricing

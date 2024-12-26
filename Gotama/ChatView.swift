@@ -32,6 +32,12 @@ struct ChatView: View {
     @State private var pendingMessageText: String?
     @State private var viewOpacity: Double = 0.0
     @State private var hasAppliedInitialAnimation = false
+    @State private var isOnboarding = false
+    @State private var proposedName: String?
+    @State private var showNameConfirmation = false
+    @State private var showWelcomePart1 = false
+    @State private var showWelcomePart2 = false
+    @State private var showWelcomePart3 = false
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -77,6 +83,12 @@ struct ChatView: View {
                                      to: nil,
                                      from: nil,
                                      for: nil)
+        
+        // Handle onboarding name collection
+        if isOnboarding {
+            handleOnboardingMessage(trimmedText)
+            return
+        }
         
         print("🔍 Checking API key configuration...")
         guard isApiKeyConfigured else {
@@ -245,7 +257,8 @@ struct ChatView: View {
                                     message: message,
                                     onRetry: message.error != nil ? { await retryMessage(message) } : nil,
                                     showError: errorMessage == nil,
-                                    messageText: $messageText
+                                    messageText: $messageText,
+                                    showConfirmation: showNameConfirmation && message.role == "assistant" && message.content.contains("Is that correct?")
                                 )
                                 .id(message.id)
                                 .transition(.opacity.combined(with: .scale))
@@ -264,10 +277,10 @@ struct ChatView: View {
                         }
                         .animation(.smooth(duration: 0.3), value: existingChat.messages)
                     }
+                    .opacity(viewOpacity)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .onAppear {
                         scrollProxy = proxy
-                        // Position last message like we do after sending
                         if let lastUserMessage = existingChat.messages.last(where: { $0.role == "user" }) {
                             proxy.scrollTo(lastUserMessage.id, anchor: .top)
                         }
@@ -315,11 +328,29 @@ struct ChatView: View {
                             .matchedGeometryEffect(id: "greeting", in: animation)
                             .frame(maxWidth: 300)
                     } else {
-                        Text("What is in your mind?")
-                            .font(.title)
-                            .multilineTextAlignment(.center)
-                            .matchedGeometryEffect(id: "title", in: animation)
-                            .frame(maxWidth: 300)
+                        VStack(spacing: 16) {
+                            if showWelcomePart1 {
+                                Text("I am Gotama, your AI mindfulness teacher.")
+                                    .font(.title)
+                                    .multilineTextAlignment(.center)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                            
+                             if showWelcomePart2 {
+                                 Text("I am trained on the earliest Buddhist texts.")
+                                     .font(.title)
+                                     .multilineTextAlignment(.center)
+                                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                             }
+                            
+                            if showWelcomePart3 {
+                                Text("What should I call you?")
+                                    .font(.title)
+                                    .multilineTextAlignment(.center)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                        }
+                        .frame(maxWidth: 300)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -402,8 +433,10 @@ struct ChatView: View {
             }
         }
         .onAppear {
-            // print("🎭 ChatView.onAppear - Initial opacity: \(viewOpacity)")
-            // print("🎭 Is from launch screen: \(ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true")")
+            // Check if we need to start onboarding
+            if settings.first?.firstName.isEmpty ?? true {
+                isOnboarding = true
+            }
             
             if let chatId = chat?.id {
                 print("📱 ChatView appeared for chat: \(chatId)")
@@ -414,28 +447,51 @@ struct ChatView: View {
                     viewOpacity = 1.0
                 }
             } else {
-                // print("📱 ChatView appeared for new chat")
-                
                 // Only delay keyboard and animation if we're coming from launch screen
                 let isFromLaunchScreen = ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true"
-                let delay = isFromLaunchScreen ? 2.0 : 0.1
-                
-                // print("🎭 Animation delay: \(delay)s")
+                let initialDelay = isFromLaunchScreen ? 2.0 : 0.1
                 
                 // Reset opacity if we haven't animated yet
                 if !hasAppliedInitialAnimation {
                     viewOpacity = 0.0
-                    // print("🎭 Reset opacity to 0")
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    // print("🎭 Starting animations after delay")
-                    startAsteriskAnimation()
-                    
+                DispatchQueue.main.asyncAfter(deadline: .now() + initialDelay) {
                     withAnimation(.easeInOut(duration: 1.7)) {
                         viewOpacity = 1.0
                         hasAppliedInitialAnimation = true
-                        // print("🎭 Animating opacity to 1")
+                    }
+                    
+                    // Start welcome message animations
+                    if isOnboarding {
+                        // Start asterisk animation
+                        startAsteriskAnimation()
+                        
+                        showWelcomePart1 = true
+                            
+                        // Animate second part after first part
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            withAnimation(.easeOut(duration: 0.8)) {
+                                showWelcomePart2 = true
+                            }
+                            
+                            // Animate third part after second part
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                withAnimation(.easeOut(duration: 0.8)) {
+                                    showWelcomePart3 = true
+                                }
+                                
+                                // Focus keyboard after a moment to read
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    isFocused = true
+                                    
+                                    // Optional: Add subtle haptic feedback
+                                    softHaptics.impactOccurred(intensity: 0.4)
+                                }
+                            }
+                        }
+                    } else {
+                        startAsteriskAnimation()
                     }
                 }
             }
@@ -446,8 +502,8 @@ struct ChatView: View {
                 }
             }
             
-            if settings.first?.firstName.isEmpty ?? true || 
-               settings.first?.anthropicApiKey.isEmpty ?? true {
+            // Only show settings sheet if API key is missing
+            if settings.first?.anthropicApiKey.isEmpty ?? true {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     showSettingsOnAppear = true
                 }
@@ -471,19 +527,21 @@ struct ChatView: View {
         }
     }
     
+    // Chat input area
     @ViewBuilder
     private var inputArea: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    TextField("Chat with Gotama", text: $messageText, axis: .vertical)
+                    TextField(isOnboarding ? "Your first name" : "Chat with Gotama", text: $messageText, axis: .vertical)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
-                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.8)) : .primary))
-                        .tint(.accent)
+                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
+                        
+                        // .tint(.accent)
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
                             if isRecording && !isTextFromRecognition {
@@ -520,16 +578,16 @@ struct ChatView: View {
             .padding(.vertical, 8)
             .background {
                 ZStack {
-                    // Base layer - always opaque
+                    //   layer - always opaque
                     VStack(spacing: 0) {
                         Group {
-                            colorScheme == .dark ? Color(white: 0.23) : Color(white: 0.82)
+                            colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
                         }
                         .clipShape(UnevenRoundedRectangle(cornerRadii: 
                             .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
                         
                         Group {
-                            colorScheme == .dark ? Color(white: 0.23) : Color(white: 0.82)
+                            colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
                         }
                         .frame(maxHeight: .infinity)
                         .edgesIgnoringSafeArea(.bottom)
@@ -539,10 +597,12 @@ struct ChatView: View {
                     if isRecording {
                         VStack(spacing: 0) {
                             Color.accent
+                                .opacity(0.8)
                                 .clipShape(UnevenRoundedRectangle(cornerRadii: 
                                     .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
                             
                             Color.accent
+                                .opacity(0.8)
                                 .frame(maxHeight: .infinity)
                                 .edgesIgnoringSafeArea(.bottom)
                         }
@@ -746,20 +806,68 @@ struct ChatView: View {
     }
     
     private func stopDictation() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        // Cancel recognition task first
+        recognitionTask?.finish()
+        recognitionTask = nil
         
+        // End audio request
         recognitionRequest?.endAudio()
         recognitionRequest = nil
         
-        recognitionTask?.cancel()
-        recognitionTask = nil
+        // Stop audio engine last
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
         
         withAnimation {
             isRecording = false
         }
         
         softHaptics.impactOccurred()
+    }
+    
+    private func handleOnboardingMessage(_ text: String) {
+        let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Save the name
+        if let settings = settings.first {
+            settings.firstName = name
+        } else {
+            let newSettings = Settings(firstName: name)
+            modelContext.insert(newSettings)
+        }
+        
+        // First fade out current content
+        withAnimation(.easeOut(duration: 0.3)) {
+            viewOpacity = 0
+        }
+        
+        // After fade out, update state and prepare for new content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // End onboarding
+            isOnboarding = false
+            
+            // Reset chat state
+            if let currentChat = chat {
+                modelContext.delete(currentChat)
+            }
+            
+            // Reset asterisk animation
+            asteriskRotation = 45.0
+            isAsteriskAnimating = false
+            
+            chat = nil
+            messageText = ""
+            errorMessage = nil
+            canCreateNewChat = false
+            
+            // Start asterisk animation
+            startAsteriskAnimation()
+            
+            // Fade in new content
+            withAnimation(.easeIn(duration: 0.3)) {
+                viewOpacity = 1
+            }
+        }
     }
 }
 
@@ -775,6 +883,7 @@ struct MessageBubble: View {
     
     // Add binding to messageText from ChatView
     @Binding var messageText: String
+    let showConfirmation: Bool
     
     var body: some View {
         HStack {
@@ -782,9 +891,9 @@ struct MessageBubble: View {
                 Spacer()
             }
             
-            VStack(alignment: message.role == "user" ? .trailing : .leading) {
+            VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 8) {
                 if message.isThinking == true {
-                    TypingIndicator()
+                    ThinkingIndicator()
                         .padding(.vertical, 4)
                         .padding(.horizontal, 8)
                 } else {
@@ -801,34 +910,45 @@ struct MessageBubble: View {
                             
                             if message.role == "user" {
                                 Button {
-                                    showEditConfirmation = true
+                                    editMessage()
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
                                 
                                 Button(role: .destructive) {
-                                    showDeleteConfirmation = true
+                                    deleteMessageAndFollowing()
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
                         })
-                        .alert("Edit Message", isPresented: $showEditConfirmation) {
-                            Button("Cancel", role: .cancel) { }
-                            Button("Edit", role: .destructive) {
-                                editMessage()
+                    
+                    if showConfirmation {
+                        HStack(spacing: 12) {
+                            Button {
+                                messageText = "Yes"
+                            } label: {
+                                Text("Yes")
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.accent)
+                                    .foregroundColor(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                        } message: {
-                            Text("Editing and resending this message will delete all messages that follow")
-                        }
-                        .alert("Delete Message", isPresented: $showDeleteConfirmation) {
-                            Button("Cancel", role: .cancel) { }
-                            Button("Delete", role: .destructive) {
-                                deleteMessageAndFollowing()
+                            
+                            Button {
+                                messageText = "No"
+                            } label: {
+                                Text("No")
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray5))
+                                    .foregroundColor(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                        } message: {
-                            Text("Deleting this message will delete all messages that follow")
                         }
+                        .padding(.top, 4)
+                    }
                 }
                 
                 if showError, let error = message.error {
@@ -859,6 +979,22 @@ struct MessageBubble: View {
                 Spacer()
             }
         }
+        .alert("Edit Message", isPresented: $showEditConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Edit", role: .destructive) {
+                editMessage()
+            }
+        } message: {
+            Text("Editing and resending this message will delete all messages that follow")
+        }
+        .alert("Delete Message", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteMessageAndFollowing()
+            }
+        } message: {
+            Text("Deleting this message will delete all messages that follow")
+        }
     }
     
     private func editMessage() {
@@ -867,6 +1003,13 @@ struct MessageBubble: View {
         // Set the message text for editing
         messageText = message.content
         print("📝 Loaded message text for editing: \(messageText)")
+        
+        // Check if this is the first message and update chat title
+        if let chat = message.chat,
+           let firstMessage = chat.messages.first,
+           firstMessage.id == message.id {
+            chat.title = messageText
+        }
         
         // Delete this and following messages
         deleteMessageAndFollowing()
@@ -905,7 +1048,7 @@ struct MessageBubble: View {
     }
 }
 
-struct TypingIndicator: View {
+struct ThinkingIndicator: View {
     @State private var rotation = 0.0
     
     var body: some View {
