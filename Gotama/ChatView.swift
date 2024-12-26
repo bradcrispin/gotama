@@ -752,6 +752,7 @@ struct MessageBubble: View {
     let message: ChatMessage
     var onRetry: (() async -> Void)?
     let showError: Bool
+    @State private var showCopied = false
     
     var body: some View {
         HStack {
@@ -769,6 +770,15 @@ struct MessageBubble: View {
                         .textSelection(.enabled)
                         .padding(.vertical, 8)
                         .padding(.horizontal, message.role == "user" ? 12 : 16)
+                        .contextMenu(menuItems: {
+                            if message.role == "assistant" {
+                                Button {
+                                    UIPasteboard.general.string = message.content
+                                } label: {
+                                    Label("Copy", systemImage: "doc.on.doc")
+                                }
+                            }
+                        })
                 }
                 
                 if showError, let error = message.error {
