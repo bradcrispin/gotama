@@ -29,6 +29,8 @@ struct ChatView: View {
     @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     @State private var currentTask: Task<Void, Never>?
     @State private var pendingMessageText: String?
+    @State private var viewOpacity: Double = 0.0
+    @State private var hasAppliedInitialAnimation = false
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -330,6 +332,7 @@ struct ChatView: View {
                 .transition(.opacity.animation(.easeInOut(duration: 0.3)))
             }
         }
+        .opacity(viewOpacity)
         .animation(.spring(duration: 0.4), value: chat?.messages.isEmpty)
         .animation(.spring(duration: 0.4), value: chat?.id)
         .navigationTitle("Gotama")
@@ -395,9 +398,17 @@ struct ChatView: View {
             }
         }
         .onAppear {
+            print("🎭 ChatView.onAppear - Initial opacity: \(viewOpacity)")
+            print("🎭 Is from launch screen: \(ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true")")
+            
             if let chatId = chat?.id {
                 print("📱 ChatView appeared for chat: \(chatId)")
                 updateCanCreateNewChat()
+                
+                // Existing chat animation
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    viewOpacity = 1.0
+                }
             } else {
                 print("📱 ChatView appeared for new chat")
                 
@@ -405,23 +416,23 @@ struct ChatView: View {
                 let isFromLaunchScreen = ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true"
                 let delay = isFromLaunchScreen ? 2.5 : 0.1
                 
+                print("🎭 Animation delay: \(delay)s")
+                
+                // Reset opacity if we haven't animated yet
+                if !hasAppliedInitialAnimation {
+                    viewOpacity = 0.0
+                    print("🎭 Reset opacity to 0")
+                }
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    print("🎭 Starting animations after delay")
                     startAsteriskAnimation()
                     
-                    // Only set focus and show keyboard if we don't need to show settings
-                    // let needsSettings = settings.first?.firstName.isEmpty ?? true || 
-                    //                   settings.first?.anthropicApiKey.isEmpty ?? true
-                    // if !needsSettings {
-                    //     isFocused = true
-                        
-                    //     //Only show keyboard if not from launch screen
-                    //     if !isFromLaunchScreen {
-                    //         UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder), 
-                    //                                      to: nil, 
-                    //                                      from: nil, 
-                    //                                      for: nil)
-                    //     }
-                    // }
+                    withAnimation(.easeInOut(duration: 0.8)) {
+                        viewOpacity = 1.0
+                        hasAppliedInitialAnimation = true
+                        print("🎭 Animating opacity to 1")
+                    }
                 }
             }
             
