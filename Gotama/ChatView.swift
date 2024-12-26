@@ -5,6 +5,7 @@ import Speech
 struct ChatView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var chat: Chat?
     @State private var messageText: String = ""
     @State private var isLoading = false
@@ -401,8 +402,8 @@ struct ChatView: View {
             }
         }
         .onAppear {
-            print("🎭 ChatView.onAppear - Initial opacity: \(viewOpacity)")
-            print("🎭 Is from launch screen: \(ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true")")
+            // print("🎭 ChatView.onAppear - Initial opacity: \(viewOpacity)")
+            // print("🎭 Is from launch screen: \(ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true")")
             
             if let chatId = chat?.id {
                 print("📱 ChatView appeared for chat: \(chatId)")
@@ -413,28 +414,28 @@ struct ChatView: View {
                     viewOpacity = 1.0
                 }
             } else {
-                print("📱 ChatView appeared for new chat")
+                // print("📱 ChatView appeared for new chat")
                 
                 // Only delay keyboard and animation if we're coming from launch screen
                 let isFromLaunchScreen = ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true"
-                let delay = isFromLaunchScreen ? 2.5 : 0.1
+                let delay = isFromLaunchScreen ? 2.0 : 0.1
                 
-                print("🎭 Animation delay: \(delay)s")
+                // print("🎭 Animation delay: \(delay)s")
                 
                 // Reset opacity if we haven't animated yet
                 if !hasAppliedInitialAnimation {
                     viewOpacity = 0.0
-                    print("🎭 Reset opacity to 0")
+                    // print("🎭 Reset opacity to 0")
                 }
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    print("🎭 Starting animations after delay")
+                    // print("🎭 Starting animations after delay")
                     startAsteriskAnimation()
                     
-                    withAnimation(.easeInOut(duration: 0.8)) {
+                    withAnimation(.easeInOut(duration: 1.7)) {
                         viewOpacity = 1.0
                         hasAppliedInitialAnimation = true
-                        print("🎭 Animating opacity to 1")
+                        // print("🎭 Animating opacity to 1")
                     }
                 }
             }
@@ -481,7 +482,9 @@ struct ChatView: View {
                         .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
-                        .foregroundColor(isRecording ? .white : .primary)
+                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.8)) : .primary))
+                        .tint(.accent)
+                        .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
                             if isRecording && !isTextFromRecognition {
                                 stopDictation()
@@ -516,30 +519,39 @@ struct ChatView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
             .background {
-                VStack(spacing: 0) {
-                    Group {
-                        if isRecording {
-                            Color.accent
-                                .opacity(0.8)
-                        } else {
-                            Color(white: 0.23)
+                ZStack {
+                    // Base layer - always opaque
+                    VStack(spacing: 0) {
+                        Group {
+                            colorScheme == .dark ? Color(white: 0.23) : Color(white: 0.82)
                         }
+                        .clipShape(UnevenRoundedRectangle(cornerRadii: 
+                            .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
+                        
+                        Group {
+                            colorScheme == .dark ? Color(white: 0.23) : Color(white: 0.82)
+                        }
+                        .frame(maxHeight: .infinity)
+                        .edgesIgnoringSafeArea(.bottom)
                     }
-                    .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                        .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
                     
-                    Group {
-                        if isRecording {
+                    // Accent color layer when recording
+                    if isRecording {
+                        VStack(spacing: 0) {
                             Color.accent
-                                .opacity(0.8)
-                        } else {
-                            Color(white: 0.23)
+                                .clipShape(UnevenRoundedRectangle(cornerRadii: 
+                                    .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
+                            
+                            Color.accent
+                                .frame(maxHeight: .infinity)
+                                .edgesIgnoringSafeArea(.bottom)
                         }
+                        .transition(.opacity)
                     }
-                    .frame(maxHeight: .infinity)
-                    .edgesIgnoringSafeArea(.bottom)
                 }
-                .animation(.smooth(duration: 0.3), value: isRecording)
+                .onChange(of: isRecording) { wasRecording, isNowRecording in
+                    // print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
+                }
             }
         }
     }
@@ -752,6 +764,7 @@ struct ChatView: View {
 }
 
 struct MessageBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let message: ChatMessage
     var onRetry: (() async -> Void)?
     let showError: Bool
@@ -839,7 +852,7 @@ struct MessageBubble: View {
                     .padding(.top, 4)
                 }
             }
-            .background(message.role == "user" ? Color(white: 0.15) : nil)
+            .background(message.role == "user" ? (colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.93)) : nil)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             
             if message.role == "assistant" {
@@ -888,7 +901,7 @@ struct MessageBubble: View {
             modelContext.delete(message)
         }
         
-        print("✅ Deletion complete. Remaining messages: \(chat.messages.count)")
+        print("🗑️ Deletion complete. Remaining messages: \(chat.messages.count)")
     }
 }
 
@@ -911,19 +924,20 @@ struct TypingIndicator: View {
 struct ErrorBanner: View {
     let message: String
     var onTap: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(colorScheme == .dark ? .secondary : .secondary)
             
             Text(message)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(colorScheme == .dark ? .secondary : .secondary)
             
             Spacer()
         }
         .padding()
-        .background(Color(white: 0.1))
+        .background(colorScheme == .dark ? Color(white: 0.1) : Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
         .padding(.top)
