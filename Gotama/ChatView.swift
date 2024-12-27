@@ -349,8 +349,8 @@ struct ChatView: View {
                         .opacity(viewModel.viewOpacity)
                         .onChange(of: viewModel.isComplete) { wasComplete, isComplete in
                             if isComplete {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    onboardingViewModel = nil
+                                Task { @MainActor in
+                                    await handleOnboardingCompletion()
                                 }
                             }
                         }
@@ -379,7 +379,7 @@ struct ChatView: View {
         .opacity(viewOpacity)
         .animation(.spring(duration: 0.4), value: chat?.messages.isEmpty)
         .animation(.spring(duration: 0.4), value: chat?.id)
-        // .toolUnlockCelebration()
+        .toolUnlockCelebration()
         .navigationTitle("Gotama")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -866,6 +866,38 @@ struct ChatView: View {
         // Start asterisk animation after transition
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             startAsteriskAnimation()
+        }
+    }
+
+    @MainActor
+    private func handleOnboardingCompletion() async {
+        print("🎉 Handling onboarding completion")
+        
+        do {
+            // Enable journal feature
+            let settings = try Settings.getOrCreate(modelContext: modelContext)
+            if !settings.journalEnabled {
+                print("📔 Enabling journal feature")
+                settings.journalEnabled = true
+                try modelContext.save()
+                
+                // Post notification to show tool unlock celebration
+                print("🎊 Triggering journal tool celebration")
+                NotificationCenter.default.post(name: Notification.Name("JournalToolUnlocked"), object: nil)
+            }
+            
+            // Transition to new chat with animation
+            print("🔄 Transitioning to new chat")
+            withAnimation(.easeInOut(duration: 0.3)) {
+                onboardingViewModel = nil
+            }
+            
+            // Small delay before starting new chat
+            try? await Task.sleep(for: .seconds(0.3))
+            startNewChat()
+            
+        } catch {
+            print("❌ Error handling onboarding completion: \(error)")
         }
     }
 }

@@ -388,59 +388,59 @@ struct OnboardingStep: Identifiable {
     }
 }
 
-// struct ToolUnlockCelebration: ViewModifier {
-//     @State private var isAnimating = false
-//     @State private var showCelebration = false
+struct ToolUnlockCelebration: ViewModifier {
+    @State private var isAnimating = false
+    @State private var showCelebration = false
     
-//     func body(content: Content) -> some View {
-//         ZStack {
-//             content
+    func body(content: Content) -> some View {
+        ZStack {
+            content
             
-//             if showCelebration {
-//                 VStack(spacing: 16) {
-//                     Image(systemName: "book.fill")
-//                         .font(.system(size: 48))
-//                         .foregroundStyle(.white)
-//                         .symbolEffect(.bounce, value: isAnimating)
+            if showCelebration {
+                VStack(spacing: 16) {
+                    Image(systemName: "book.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.white)
+                        .symbolEffect(.bounce, value: isAnimating)
                     
-//                     Text("Journal Unlocked!")
-//                         .font(.title2.bold())
-//                         .foregroundStyle(.white)
-//                 }
-//                 .padding(32)
-//                 .background(.accent.opacity(0.9))
-//                 .clipShape(RoundedRectangle(cornerRadius: 20))
-//                 .shadow(radius: 10)
-//                 .scaleEffect(isAnimating ? 1 : 0.5)
-//                 .opacity(isAnimating ? 1 : 0)
-//                 .animation(.spring(duration: 0.5), value: isAnimating)
-//             }
-//         }
-//         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("JournalToolUnlocked"))) { _ in
-//             showCelebration = true
-//             withAnimation {
-//                 isAnimating = true
-//             }
+                    Text("Journal Unlocked!")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                }
+                .padding(32)
+                .background(.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(radius: 10)
+                .scaleEffect(isAnimating ? 1 : 0.5)
+                .opacity(isAnimating ? 1 : 0)
+                .animation(.spring(duration: 0.5), value: isAnimating)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("JournalToolUnlocked"))) { _ in
+            showCelebration = true
+            withAnimation {
+                isAnimating = true
+            }
             
-//             // Hide celebration after delay
-//             Task {
-//                 try? await Task.sleep(for: .seconds(2))
-//                 await MainActor.run {
-//                     withAnimation {
-//                         isAnimating = false
-//                     }
-//                 }
-//                 try? await Task.sleep(for: .seconds(0.5))
-//                 await MainActor.run {
-//                     showCelebration = false
-//                 }
-//             }
-//         }
-//     }
-// }
+            // Hide celebration after delay
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                await MainActor.run {
+                    withAnimation {
+                        isAnimating = false
+                    }
+                }
+                try? await Task.sleep(for: .seconds(0.5))
+                await MainActor.run {
+                    showCelebration = false
+                }
+            }
+        }
+    }
+}
 
-// extension View {
-//     func toolUnlockCelebration() -> some View {
-//         modifier(ToolUnlockCelebration())
-//     }
-// } 
+extension View {
+    func toolUnlockCelebration() -> some View {
+        modifier(ToolUnlockCelebration())
+    }
+} 
