@@ -18,6 +18,9 @@ struct ChatView: View {
     @Namespace private var animation
     @State private var asteriskRotation = 45.0
     @State private var isAsteriskAnimating = false
+    @State private var isAsteriskStopping = false
+    @State private var asteriskAnimationSpeed = 8.0  // Default speed in seconds
+    @State private var asteriskAnimationState = 0  // 0: normal, 1: slow, 2: stopped
     @State private var scrollProxy: ScrollViewProxy?
     @State private var isNearBottom = true
     @State private var showScrollToBottom = false
@@ -31,6 +34,7 @@ struct ChatView: View {
     @State private var pendingMessageText: String?
     @State private var viewOpacity: Double = 0.0
     @State private var hasAppliedInitialAnimation = false
+    @State private var isFirstLaunch = true  // New state variable
     @State private var onboardingViewModel: OnboardingViewModel?
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
@@ -96,7 +100,7 @@ struct ChatView: View {
         print("🔍 Checking API key configuration...")
         guard isApiKeyConfigured else {
             print("❌ API key not configured")
-            errorMessage = "Please add your Anthropic API key"
+            errorMessage = "Tap here to add your Anthropic API key"
             return
         }
         print("✅ API key configured, proceeding with message")
@@ -315,7 +319,9 @@ struct ChatView: View {
                     }
                     .transition(.opacity.animation(.easeInOut(duration: 0.3)))
                 }
-            } else {
+            } 
+            // If there's no chat, show the onboarding view or the
+            else {
                 VStack(spacing: 24) {
                     Image(systemName: "asterisk")
                         .font(.largeTitle)
@@ -326,33 +332,34 @@ struct ChatView: View {
                             startAsteriskAnimation()
                         }
                     
-                    if let firstName = settings.first?.firstName, !firstName.isEmpty {
-                        Text("Hi \(firstName). What is in your mind?")
-                            .font(.title)
-                            .multilineTextAlignment(.center)
-                            .matchedGeometryEffect(id: "greeting", in: animation)
-                            .frame(maxWidth: 300)
-                    } else if let viewModel = onboardingViewModel {
+                    if let viewModel = onboardingViewModel {
                         VStack(spacing: 16) {
-                            if viewModel.showTitle, let step = viewModel.currentStep {
-                                Text(step.content.title)
-                                    .font(.title)
-                                    .multilineTextAlignment(.center)
-                                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                            }
-                            
-                            if viewModel.showSubtitle, let step = viewModel.currentStep {
-                                ForEach(Array(step.content.subtitles.enumerated()), id: \.offset) { index, subtitle in
-                                    Text(subtitle)
+                            if viewModel.showMessages, let step = viewModel.currentStep {
+                                ForEach(Array(step.content.messages.enumerated()), id: \.offset) { index, message in
+                                    Text(message)
                                         .font(.title)
                                         .multilineTextAlignment(.center)
+                                        .opacity(Double(index) <= viewModel.messageAnimationProgress ? 1 : 0)
                                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                                        .animation(.easeOut(duration: step.animationDuration).delay(Double(index) * 0.5), value: viewModel.showSubtitle)
+                                        .animation(.easeOut(duration: 0.8), value: viewModel.messageAnimationProgress)
                                 }
                             }
                         }
                         .frame(maxWidth: 300)
                         .opacity(viewModel.viewOpacity)
+                        .onChange(of: viewModel.isComplete) { wasComplete, isComplete in
+                            if isComplete {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    onboardingViewModel = nil
+                                }
+                            }
+                        }
+                    } else if let firstName = settings.first?.firstName, !firstName.isEmpty {
+                        Text("Hi \(firstName). What is in your mind?")
+                            .font(.title)
+                            .multilineTextAlignment(.center)
+                            .matchedGeometryEffect(id: "greeting", in: animation)
+                            .frame(maxWidth: 300)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -372,66 +379,72 @@ struct ChatView: View {
         .opacity(viewOpacity)
         .animation(.spring(duration: 0.4), value: chat?.messages.isEmpty)
         .animation(.spring(duration: 0.4), value: chat?.id)
+        // .toolUnlockCelebration()
         .navigationTitle("Gotama")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    dismiss()
+                    if let viewModel = onboardingViewModel, viewModel.canGoBack {
+                        viewModel.goBack()
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     Text("")
                 }
                 .tint(.accent)
             }
             
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    haptics.impactOccurred()
-                    print("🔄 Starting new chat from existing chat")
-                    
-                    // Clean up current chat if empty
-                    if let currentChat = chat, currentChat.messages.isEmpty {
-                        modelContext.delete(currentChat)
+            if let viewModel = onboardingViewModel, 
+               let currentStep = viewModel.currentStep,
+               currentStep.isOptional {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task {
+                            await viewModel.processInput("")
+                        }
+                    } label: {
+                        Text("Skip")
+                            .foregroundStyle(.secondary)
                     }
-                    
-                    // Reset asterisk animation
-                    asteriskRotation = 45.0
-                    isAsteriskAnimating = false
-                    
-                    // Ensure keyboard focus and visibility with proper timing
-                    withAnimation(.spring(duration: 0.4)) {
-                        // Create new chat
-                        chat = nil
-                        messageText = ""
-                        errorMessage = nil
-                        canCreateNewChat = false
-                        print("📱 Chat state reset")
-                    }
-                    
-                    // Start asterisk animation after transition
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        startAsteriskAnimation()
-                    }
-                    
-                    // Delay focus until after animation
-                    // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    //     print("⌨️ Setting focus state to true")
-                    //     isFocused = true
-                        
-                    //     // Additional delay for keyboard
-                    //     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    //         print("⌨️ Forcing keyboard appearance")
-                    //         UIApplication.shared.sendAction(#selector(UIResponder.becomeFirstResponder),
-                    //                                      to: nil,
-                    //                                      from: nil,
-                    //                                      for: nil)
-                    //     }
-                    // }
-                } label: {
-                    Image(systemName: "plus.message")
                 }
-                .disabled(!canCreateNewChat)
-                .tint(.accent)
+            } else if onboardingViewModel == nil {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        haptics.impactOccurred()
+                        print("🔄 Starting new chat from existing chat")
+                        
+                        // Clean up current chat if empty
+                        if let currentChat = chat, currentChat.messages.isEmpty {
+                            modelContext.delete(currentChat)
+                        }
+                        
+                        // Reset asterisk animation
+                        asteriskRotation = 45.0
+                        isAsteriskAnimating = false
+                        
+                        // Ensure keyboard focus and visibility with proper timing
+                        withAnimation(.spring(duration: 0.4)) {
+                            // Create new chat
+                            chat = nil
+                            messageText = ""
+                            errorMessage = nil
+                            canCreateNewChat = false
+                            print("📱 Chat state reset")
+                        }
+                        
+                        // Start asterisk animation after transition
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(400))
+                            startAsteriskAnimation()
+                        }
+                    } label: {
+                        Image(systemName: "plus.message")
+                    }
+                    .disabled(!canCreateNewChat)
+                    .tint(.accent)
+                }
             }
         }
         .onAppear {
@@ -440,11 +453,29 @@ struct ChatView: View {
                 do {
                     let settings = try Settings.getOrCreate(modelContext: modelContext)
                     if settings.firstName.isEmpty {
-                        // Reset any existing onboarding view model
-                        onboardingViewModel = nil
+                        // If there's an existing onboarding, clean it up
+                        if onboardingViewModel != nil {
+                            onboardingViewModel = nil
+                        }
+                        
                         // Create fresh onboarding view model
                         onboardingViewModel = OnboardingViewModel(modelContext: modelContext)
-                        onboardingViewModel?.start()
+                        
+                        // For first launch, start immediately with full opacity
+                        if isFirstLaunch {
+                            print("🚀 First launch - starting onboarding immediately")
+                            viewOpacity = 1.0  // Set full opacity immediately
+                            onboardingViewModel?.viewOpacity = 1.0
+                            onboardingViewModel?.showMessages = true  // Ensure messages container is visible
+                            onboardingViewModel?.start()
+                        } else {
+                            print("🚀 Not first launch")
+                            // Just show the content without animation
+                            onboardingViewModel?.viewOpacity = 1.0
+                            onboardingViewModel?.showMessages = true
+                            onboardingViewModel?.showInput = true
+                            onboardingViewModel?.messageAnimationProgress = Double(onboardingViewModel?.currentStep?.content.messages.count ?? 0) - 1
+                        }
                     }
                 } catch {
                     print("❌ Error checking settings: \(error)")
@@ -459,24 +490,20 @@ struct ChatView: View {
                 withAnimation(.easeInOut(duration: 0.8)) {
                     viewOpacity = 1.0
                 }
-            } else {
-                // Only delay keyboard and animation if we're coming from launch screen
-                let isFromLaunchScreen = ProcessInfo.processInfo.environment["FROM_LAUNCH_SCREEN"] == "true"
-                let initialDelay = isFromLaunchScreen ? 2.0 : 0.1
-                
+            } else if !isFirstLaunch || onboardingViewModel == nil {  // Handle both non-first launch and regular chat creation
                 // Reset opacity if we haven't animated yet
                 if !hasAppliedInitialAnimation {
                     viewOpacity = 0.0
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + initialDelay) {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(0.1))  // Minimal delay for non-first launch
                     withAnimation(.easeInOut(duration: 1.7)) {
                         viewOpacity = 1.0
                         hasAppliedInitialAnimation = true
                     }
                     
                     if let viewModel = onboardingViewModel {
-                        // Start asterisk animation
                         startAsteriskAnimation()
                         viewModel.start()
                     } else {
@@ -516,18 +543,16 @@ struct ChatView: View {
     private var inputArea: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                ZStack {
+                // Wrap TextField and button in a container
+                HStack(spacing: 0) {
                     TextField(onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
                              text: $messageText, axis: .vertical)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
-                        .padding(.trailing, 44)
                         .focused($isFocused)
                         .disabled(isLoading)
                         .opacity(onboardingViewModel?.showInput ?? true ? 1 : 0)
                         .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
-                        
-                        // .tint(.accent)
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
                             if isRecording && !isTextFromRecognition {
@@ -535,30 +560,40 @@ struct ChatView: View {
                             }
                         }
                     
-                    HStack {
-                        Spacer()
-                        Button {
-                            if isLoading {
-                                stopGeneration()
-                            } else if isRecording {
-                                stopDictation()
-                            } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                startDictation()
-                            } else {
-                                sendMessage()
-                            }
-                        } label: {
-                            Image(systemName: isLoading ? "stop.circle.fill" :
-                                  (isRecording ? "mic.fill" : 
-                                   (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill")))
-                                .font(.title2)
-                                .foregroundColor(isLoading ? Color(white: 0.6) : (isRecording ? .white : .accent))
-                                .symbolEffect(.bounce, value: isRecording)
-                                .modifier(PulseEffect(isActive: isRecording))
+                    Button {
+                        if isLoading {
+                            stopGeneration()
+                        } else if isRecording {
+                            stopDictation()
+                        } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            startDictation()
+                        } else {
+                            sendMessage()
                         }
-                        .padding(.trailing, 12)
+                    } label: {
+                        Image(systemName: isLoading ? "stop.circle.fill" :
+                              (isRecording ? "mic.fill" : 
+                               (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill")))
+                            .font(.title2)
+                            .foregroundColor(isLoading ? Color(white: 0.6) : (isRecording ? .white : .accent))
+                            .symbolEffect(.bounce, value: isRecording)
+                            .modifier(PulseEffect(isActive: isRecording))
                     }
+                    .padding(.horizontal, 12)
                 }
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    TapGesture()
+                        .onEnded { _ in
+                            guard !isFocused else { return }
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .nanoseconds(1))  // Minimal delay to ensure view is ready
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    isFocused = true
+                                }
+                            }
+                        }
+                )
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -599,6 +634,8 @@ struct ChatView: View {
                     // print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
                 }
             }
+            .opacity(viewOpacity)
+            .animation(.easeOut(duration: 0.2), value: viewOpacity)
         }
     }
     
@@ -657,10 +694,13 @@ struct ChatView: View {
     private func startAsteriskAnimation() {
         guard !isAsteriskAnimating else { return }
         isAsteriskAnimating = true
+        isAsteriskStopping = false
         
-        withAnimation(.easeInOut(duration: 8)
+        // Reset rotation to starting position + one full rotation
+        asteriskRotation = 45
+        withAnimation(.easeInOut(duration: 8.0)
             .repeatForever(autoreverses: false)) {
-                asteriskRotation = 405 // 45 + 360 degrees
+            asteriskRotation = 405 // 45 + 360 degrees
         }
     }
     

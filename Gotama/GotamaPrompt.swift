@@ -104,6 +104,10 @@ struct GotamaPrompt {
     - My name is %@.
     """
     
+    private static let priorExperienceInfo = """
+    - My prior experience with mindfulness and meditation: %@
+    """
+    
     private static let aboutMeInfo = """
     - About me: %@
     """
@@ -128,6 +132,10 @@ struct GotamaPrompt {
         if let settings = settings {
             if !settings.firstName.isEmpty {
                 components.append(String(format: userInfo, settings.firstName))
+            }
+            
+            if !settings.priorExperience.isEmpty {
+                components.append(String(format: priorExperienceInfo, settings.priorExperience))
             }
             
             if !settings.aboutMe.isEmpty {

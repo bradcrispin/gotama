@@ -35,6 +35,7 @@ struct LaunchScreenView: View {
                 // Set environment variable to indicate we're coming from launch screen
                 setenv("FROM_LAUNCH_SCREEN", "true", 1)
                 
+
                 // Start the rotation animation
                 withAnimation(.easeInOut(duration: 8)
                     .repeatForever(autoreverses: false)) {
@@ -50,6 +51,7 @@ struct LaunchScreenView: View {
                 // Clear the environment variable when launch screen disappears
                 unsetenv("FROM_LAUNCH_SCREEN")
             }
+
         }
     }
 }

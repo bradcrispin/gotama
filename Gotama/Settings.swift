@@ -5,13 +5,15 @@ import SwiftData
 final class Settings {
     var firstName: String
     var anthropicApiKey: String
+    var priorExperience: String
     var aboutMe: String
     var goal: String
     var journalEnabled: Bool
     
-    init(firstName: String = "", anthropicApiKey: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false) {
+    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false) {
         self.firstName = firstName
         self.anthropicApiKey = anthropicApiKey
+        self.priorExperience = priorExperience
         self.aboutMe = aboutMe
         self.goal = goal
         self.journalEnabled = journalEnabled

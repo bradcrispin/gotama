@@ -124,6 +124,7 @@ struct ContentView: View {
                         ForEach(chats) { chat in
                             NavigationLink(value: ChatDestination.existing(chat)) {
                                 ChatRow(chat: chat)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         .onDelete(perform: deleteChats)
@@ -231,7 +232,7 @@ struct ContentView: View {
     
     private func deleteChats(offsets: IndexSet) {
         haptics.impactOccurred()
-        print("🗑��� Deleting chats at offsets: \(offsets)")
+        print("🗑️ Deleting chats at offsets: \(offsets)")
         withAnimation(.easeInOut(duration: 0.3)) {
             for index in offsets {
                 print("🗑️ Deleting chat: \(chats[index].id)")
@@ -246,10 +247,9 @@ struct ChatRow: View {
     
     var body: some View {
         Text(chat.title)
-            .fontWeight(.medium)
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 8)
             .padding(.vertical, 12)
     }
 }

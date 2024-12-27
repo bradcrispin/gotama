@@ -10,42 +10,51 @@ import SwiftData
 
 @main
 struct GotamaApp: App {
-    let container: ModelContainer
+    @State private var showLaunchScreen = true
     @State private var navigationPath: NavigationPath
-    @State private var isShowingLaunchScreen = true
     
     init() {
-        do {
-            container = try ModelContainer(
-                for: Chat.self, JournalEntry.self, Settings.self,
-                migrationPlan: nil,
-                configurations: ModelConfiguration(isStoredInMemoryOnly: false)
-            )
-            _navigationPath = State(initialValue: NavigationPath([ChatDestination.new]))
-        } catch {
-            fatalError("Could not configure SwiftData container: \(error)")
-        }
+        // Initialize navigation path to start with new chat
+        _navigationPath = State(initialValue: NavigationPath([ChatDestination.new]))
     }
     
     var body: some Scene {
         WindowGroup {
             ZStack {
                 ContentView(navigationPath: $navigationPath)
-                    .modelContainer(container)
+                    .opacity(showLaunchScreen ? 0 : 1)
                 
-                if isShowingLaunchScreen {
+                if showLaunchScreen {
                     LaunchScreenView()
                         .transition(.opacity)
-                        .zIndex(1)
                 }
             }
+            .animation(.easeOut(duration: 0.3), value: showLaunchScreen)
             .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                // Set launch state
+                UserDefaults.standard.set(true, forKey: "isFirstLaunch")
+                
+                // Dismiss launch screen after delay
+                Task { @MainActor in
+                    // Give time for onboarding view to initialize
+                    try? await Task.sleep(for: .seconds(2.0))
+                    
+                    // Fade out launch screen
                     withAnimation(.easeOut(duration: 0.5)) {
-                        isShowingLaunchScreen = false
+                        showLaunchScreen = false
                     }
+                    
+                    // Clear launch state after transition is complete
+                    try? await Task.sleep(for: .seconds(0.5))
+                    UserDefaults.standard.set(false, forKey: "isFirstLaunch")
                 }
             }
         }
+        .modelContainer(for: [
+            Settings.self,
+            Chat.self,
+            ChatMessage.self,
+            JournalEntry.self
+        ])
     }
 }

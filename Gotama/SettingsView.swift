@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var apiKey: String = ""
     @State private var isApiKeyVisible = false
     @State private var firstName: String = ""
+    @State private var priorExperience: String = ""
     @State private var aboutMe: String = ""
     @State private var goal: String = ""
     @State private var journalEnabled: Bool = false
@@ -20,6 +21,7 @@ struct SettingsView: View {
     
     private let maxAboutMeLength = 500
     private let maxGoalLength = 200
+    private let maxPriorExperienceLength = 300
     
     init(focusApiKey: Bool = false, onSaved: (() -> Void)? = nil) {
         self.focusApiKey = focusApiKey
@@ -30,9 +32,9 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("First name", text: $firstName)
+                    TextField("", text: $firstName)
                 } header: {
-                    Text("What should I call you?")
+                    Text("First name")
                 }
 
                 Section {
@@ -44,11 +46,30 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("Do you have a goal?")
+                    Text("Goal")
                 } footer: {
                     Group {
                         if goal.count > Int(Double(maxGoalLength) * 0.8) {
                             Text("Getting close to limit (\(goal.count)/\(maxGoalLength) characters)")
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                
+                Section {
+                    TextEditor(text: $priorExperience)
+                        .frame(minHeight: 80)
+                        .onChange(of: priorExperience) {
+                            if priorExperience.count > maxPriorExperienceLength {
+                                priorExperience = String(priorExperience.prefix(maxPriorExperienceLength))
+                            }
+                        }
+                } header: {
+                    Text("Prior experience")
+                } footer: {
+                    Group {
+                        if priorExperience.count > Int(Double(maxPriorExperienceLength) * 0.8) {
+                            Text("Getting close to limit (\(priorExperience.count)/\(maxPriorExperienceLength) characters)")
                                 .foregroundColor(.orange)
                         }
                     }
@@ -63,7 +84,7 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("Tell me about yourself")
+                    Text("About you")
                 } footer: {
                     Group {
                         if aboutMe.count > Int(Double(maxAboutMeLength) * 0.8) {
@@ -124,6 +145,7 @@ struct SettingsView: View {
                 if let existingSettings = settings.first {
                     apiKey = existingSettings.anthropicApiKey
                     firstName = existingSettings.firstName
+                    priorExperience = existingSettings.priorExperience
                     aboutMe = existingSettings.aboutMe
                     goal = existingSettings.goal
                     journalEnabled = existingSettings.journalEnabled
@@ -139,6 +161,7 @@ struct SettingsView: View {
         print("💾 Saving settings...")
         print("API Key length: \(apiKey.count)")
         print("First Name: \(firstName)")
+        print("Prior Experience length: \(priorExperience.count)")
         print("About Me length: \(aboutMe.count)")
         print("Goal length: \(goal.count)")
         print("Journal: \(journalEnabled)")
@@ -147,12 +170,13 @@ struct SettingsView: View {
             print("📝 Updating existing settings")
             existingSettings.anthropicApiKey = apiKey
             existingSettings.firstName = firstName
+            existingSettings.priorExperience = priorExperience
             existingSettings.aboutMe = aboutMe
             existingSettings.goal = goal
             existingSettings.journalEnabled = journalEnabled
         } else {
             print("✨ Creating new settings")
-            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, aboutMe: aboutMe, goal: goal, journalEnabled: journalEnabled)
+            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, priorExperience: priorExperience, aboutMe: aboutMe, goal: goal, journalEnabled: journalEnabled)
             modelContext.insert(newSettings)
         }
         
