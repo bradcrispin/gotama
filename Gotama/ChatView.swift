@@ -14,6 +14,7 @@ struct ChatView: View {
     @State private var errorMessage: String?
     @Query private var settings: [Settings]
     @State private var showSettings = false
+    @State private var showGotamaProfile = false
     @State private var canCreateNewChat = false
     @Namespace private var animation
     @State private var asteriskRotation = 45.0
@@ -383,6 +384,21 @@ struct ChatView: View {
         .navigationTitle("Gotama")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button {
+                    showGotamaProfile = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Gotama")
+                            // .font(.headline)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                    }
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     if let viewModel = onboardingViewModel, viewModel.canGoBack {
@@ -447,7 +463,13 @@ struct ChatView: View {
                 }
             }
         }
+        .sheet(isPresented: $showGotamaProfile) {
+            GotamaProfileView()
+        }
         .onAppear {
+            // print("📱 ChatView.body onAppear")
+            // print("📊 Initial state - viewOpacity: \(viewOpacity), hasAppliedInitialAnimation: \(hasAppliedInitialAnimation)")
+            
             // Check if we need to start onboarding
             Task {
                 do {
@@ -523,6 +545,7 @@ struct ChatView: View {
             }
         }
         .onDisappear {
+            print("📱 ChatView.body onDisappear")
             if let chat = chat, chat.messages.isEmpty {
                 modelContext.delete(chat)
             }
@@ -535,6 +558,10 @@ struct ChatView: View {
                     errorMessage = nil
                 }
             }
+        }
+        .onChange(of: isFocused) { wasFocused, isNowFocused in
+            print("🎯 Focus state changed: \(wasFocused) -> \(isNowFocused)")
+            print("📱 Current view state - viewOpacity: \(viewOpacity), hasAppliedInitialAnimation: \(hasAppliedInitialAnimation)")
         }
     }
     
@@ -555,6 +582,8 @@ struct ChatView: View {
                         .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
+                            print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
+                            print("🎤 Recording state: \(isRecording), isTextFromRecognition: \(isTextFromRecognition)")
                             if isRecording && !isTextFromRecognition {
                                 stopDictation()
                             }
@@ -585,9 +614,11 @@ struct ChatView: View {
                 .simultaneousGesture(
                     TapGesture()
                         .onEnded { _ in
+                            print("👆 Input area tapped, current focus state: \(isFocused)")
                             guard !isFocused else { return }
                             Task { @MainActor in
                                 try? await Task.sleep(for: .nanoseconds(1))  // Minimal delay to ensure view is ready
+                                print("⌨️ Setting focus after tap")
                                 withAnimation(.easeOut(duration: 0.2)) {
                                     isFocused = true
                                 }

@@ -10,11 +10,27 @@ Before responding, do analysis using
 </thinking>
 
 <instructions>
+- Ensure components are designed for light and dark mode.
 - Add detailed comments to the code to explain the code and the feature to me and to help ensure 1. you don't break it on future changes and 2. it is easy to read and understand.
 - Add detailed logs to features to empower you to verify the feature and debug the code if needed.
-- I am a web developernew to iOS development. Please take additional time to explain key concepts specific to iOS development as part of responding to me.
+- Once a feature is verified, clean up the logs so they don't get noisy. Leave the comments.
+- I am a web developer new to iOS development. Please take additional time to explain key concepts specific to iOS development as part of responding to me.
 - When dealing with concurrency, use the Swift concurrency rules and best practices below.
+- LEARN FROM MISTAKES - when you make a mistake that you have to fix, (an example would include the use of outdated syntax or API calls) take a moment to think about it and learn from it. Propose concise new instructions in <Instructions> tags to help prevent the mistake from happening again. 
 </instructions>
+
+<lessons_learned>
+    <single_instance_rules>
+    - In SwiftData, a true singleton needs both:
+        - Memory-level instance tracking (static cache)
+        - Database-level uniqueness enforcement
+        - This dual-layer approach ensures consistency across both memory and persistence.
+
+    For example, if you're making an app that tracks a user's profile, you want to make sure there's only one profile both:
+    - When the app is running (in memory)
+    - When the data is saved (in the database)
+    </single_instance_rules>
+</lessons_learned>
 
 Here's a concise guide for Swift concurrency best practices:
 <Swift_generation_concurrency_rules>

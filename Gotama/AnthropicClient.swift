@@ -23,7 +23,6 @@ enum AnthropicError: LocalizedError {
 
 actor AnthropicClient {
     private let baseURL = "https://api.anthropic.com/v1"
-    private let model = "claude-3-5-sonnet-20241022"
     private var apiKey: String?
     
     init() { }
@@ -63,14 +62,24 @@ actor AnthropicClient {
             print("  \(i + 1). [\(msg["role"] ?? "unknown")]: \(msg["content"] ?? "")")
         }
         
-        // Get model context from the first message's chat if available
-        // and capture it immediately on the main actor
-        let systemPrompt = await MainActor.run {
+        // Get model context and profile from the first message's chat if available
+        let (model, systemPrompt) = await MainActor.run {
+            // Get default model from GotamaProfile
+            var model = GotamaProfile.defaultModel
+            var systemPrompt = GotamaPrompt.buildPrompt(settings: settings, modelContext: nil)
+            
+            // Try to get profile from context
             if let context = previousMessages.first?.chat?.modelContext {
-                return GotamaPrompt.buildPrompt(settings: settings, modelContext: context)
-            } else {
-                return GotamaPrompt.buildPrompt(settings: settings, modelContext: nil)
+                do {
+                    let profile = try GotamaProfile.getOrCreate(modelContext: context)
+                    model = profile.model
+                    systemPrompt = GotamaPrompt.buildPrompt(settings: settings, modelContext: context)
+                } catch {
+                    print("❌ Error getting Gotama profile: \(error)")
+                }
             }
+            
+            return (model, systemPrompt)
         }
         
         let body: [String: Any] = [
@@ -200,7 +209,7 @@ actor AnthropicClient {
                             }
                             
                         case "ping":
-                            print("💓 Ping received")
+                            print("���� Ping received")
                             
                         default:
                             print("⚠️ Unknown event type: \(type)")

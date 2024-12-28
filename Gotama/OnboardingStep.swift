@@ -76,7 +76,7 @@ enum OnboardingInputType {
             print("📝 Current settings - Goal: \(settings.goal)")
             
             // Add remaining steps
-            steps.append(.experienceStep(modelContext: modelContext))
+            // steps.append(.experienceStep(modelContext: modelContext))
             steps.append(.aboutMeStep(modelContext: modelContext))
             
             print("✅ Onboarding steps configured. Total steps: \(steps.count)")
@@ -327,35 +327,35 @@ struct OnboardingStep: Identifiable {
         )
     }
     
-    static func experienceStep(modelContext: ModelContext) -> OnboardingStep {
-        OnboardingStep(
-            id: 3,
-            content: OnboardingContent(
-                messages: [
-                    "What is your experience with mindfulness?",
-                ],
-                inputPlaceholder: "Your prior experience",
-                inputType: .text
-            ),
-            isOptional: true,
-            validate: { _ in true },
-            process: { @MainActor experience, context in
-                do {
-                    let settings = try Settings.getOrCreate(modelContext: context)
-                    let trimmedExperience = experience.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !trimmedExperience.isEmpty {
-                        settings.priorExperience = trimmedExperience
-                        try context.save()
-                        print("✅ Successfully saved prior experience: \(trimmedExperience)")
-                    }
-                    return true
-                } catch {
-                    print("❌ Error processing prior experience step: \(error)")
-                    return false
-                }
-            }
-        )
-    }
+    // static func experienceStep(modelContext: ModelContext) -> OnboardingStep {
+    //     OnboardingStep(
+    //         id: 3,
+    //         content: OnboardingContent(
+    //             messages: [
+    //                 "What is your experience with mindfulness?",
+    //             ],
+    //             inputPlaceholder: "Your prior experience",
+    //             inputType: .text
+    //         ),
+    //         isOptional: true,
+    //         validate: { _ in true },
+    //         process: { @MainActor experience, context in
+    //             do {
+    //                 let settings = try Settings.getOrCreate(modelContext: context)
+    //                 let trimmedExperience = experience.trimmingCharacters(in: .whitespacesAndNewlines)
+    //                 if !trimmedExperience.isEmpty {
+    //                     settings.priorExperience = trimmedExperience
+    //                     try context.save()
+    //                     print("✅ Successfully saved prior experience: \(trimmedExperience)")
+    //                 }
+    //                 return true
+    //             } catch {
+    //                 print("❌ Error processing prior experience step: \(error)")
+    //                 return false
+    //             }
+    //         }
+    //     )
+    // }
     
     static func aboutMeStep(modelContext: ModelContext) -> OnboardingStep {
         OnboardingStep(

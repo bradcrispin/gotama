@@ -46,30 +46,11 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("Goal")
+                    Text("My goal")
                 } footer: {
                     Group {
                         if goal.count > Int(Double(maxGoalLength) * 0.8) {
                             Text("Getting close to limit (\(goal.count)/\(maxGoalLength) characters)")
-                                .foregroundColor(.orange)
-                        }
-                    }
-                }
-                
-                Section {
-                    TextEditor(text: $priorExperience)
-                        .frame(minHeight: 80)
-                        .onChange(of: priorExperience) {
-                            if priorExperience.count > maxPriorExperienceLength {
-                                priorExperience = String(priorExperience.prefix(maxPriorExperienceLength))
-                            }
-                        }
-                } header: {
-                    Text("Prior experience")
-                } footer: {
-                    Group {
-                        if priorExperience.count > Int(Double(maxPriorExperienceLength) * 0.8) {
-                            Text("Getting close to limit (\(priorExperience.count)/\(maxPriorExperienceLength) characters)")
                                 .foregroundColor(.orange)
                         }
                     }
@@ -84,7 +65,7 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("About you")
+                    Text("About me")
                 } footer: {
                     Group {
                         if aboutMe.count > Int(Double(maxAboutMeLength) * 0.8) {
@@ -123,7 +104,7 @@ struct SettingsView: View {
                     Text("Get your API key from console.anthropic.com")
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -145,7 +126,7 @@ struct SettingsView: View {
                 if let existingSettings = settings.first {
                     apiKey = existingSettings.anthropicApiKey
                     firstName = existingSettings.firstName
-                    priorExperience = existingSettings.priorExperience
+                    // priorExperience = existingSettings.priorExperience
                     aboutMe = existingSettings.aboutMe
                     goal = existingSettings.goal
                     journalEnabled = existingSettings.journalEnabled
@@ -170,13 +151,20 @@ struct SettingsView: View {
             print("📝 Updating existing settings")
             existingSettings.anthropicApiKey = apiKey
             existingSettings.firstName = firstName
-            existingSettings.priorExperience = priorExperience
+            // existingSettings.priorExperience = priorExperience
             existingSettings.aboutMe = aboutMe
             existingSettings.goal = goal
             existingSettings.journalEnabled = journalEnabled
         } else {
             print("✨ Creating new settings")
-            let newSettings = Settings(firstName: firstName, anthropicApiKey: apiKey, priorExperience: priorExperience, aboutMe: aboutMe, goal: goal, journalEnabled: journalEnabled)
+            let newSettings = Settings(
+                firstName: firstName,
+                anthropicApiKey: apiKey,
+                priorExperience: priorExperience,
+                aboutMe: aboutMe,
+                goal: goal,
+                journalEnabled: journalEnabled
+            )
             modelContext.insert(newSettings)
         }
         

@@ -47,6 +47,7 @@ struct ContentView: View {
         return streak
     }
     
+    // Unused
     private var streakMessage: String {
         if entries.isEmpty {
             return "Journal your practice to change your life"
@@ -259,7 +260,7 @@ struct JournalEntryRow: View {
     
     var previewText: String {
         if entry.text.isEmpty {
-            return "Begin today's reflection"
+            return "New entry"
         }
         let firstLine = entry.text.split(separator: "\n", maxSplits: 1)[0]
         return String(firstLine)
@@ -271,24 +272,24 @@ struct JournalEntryRow: View {
         } else if entry.isFromYesterday {
             return "Yesterday"
         } else {
-            return entry.createdAt.formatted(.dateTime.month().day())
+            return entry.updatedAt.formatted(.dateTime.month().day())
         }
     }
     
     var body: some View {
-        HStack {
-            Text(dateDescription)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .frame(width: 80, alignment: .leading)
-            
+        VStack(alignment: .leading, spacing: 4) {
             Text(previewText)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
+                .font(.body)
+            
+            Text(dateDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                // .textCase(.uppercase)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
 } 
 
