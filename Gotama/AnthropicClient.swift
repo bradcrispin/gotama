@@ -1,26 +1,6 @@
 import Foundation
 import SwiftData
 
-enum AnthropicError: LocalizedError {
-    case invalidURL
-    case networkError(Error)
-    case invalidResponse
-    case apiError(String)
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL:
-            return "Invalid API URL"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .apiError(let message):
-            return message
-        }
-    }
-}
-
 actor AnthropicClient {
     private let baseURL = "https://api.anthropic.com/v1"
     private var apiKey: String?
@@ -112,7 +92,7 @@ actor AnthropicClient {
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    continuation.finish(throwing: AnthropicError.invalidResponse)
+                    continuation.finish(throwing: AnthropicError.invalidResponse("Invalid HTTP response"))
                     return
                 }
                 
@@ -209,7 +189,7 @@ actor AnthropicClient {
                             }
                             
                         case "ping":
-                            print("���� Ping received")
+                            print(" Ping received")
                             
                         default:
                             print("⚠️ Unknown event type: \(type)")

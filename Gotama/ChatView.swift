@@ -20,23 +20,20 @@ struct ChatView: View {
     @State private var asteriskRotation = 45.0
     @State private var isAsteriskAnimating = false
     @State private var isAsteriskStopping = false
-    @State private var asteriskAnimationSpeed = 8.0  // Default speed in seconds
-    @State private var asteriskAnimationState = 0  // 0: normal, 1: slow, 2: stopped
+    @State private var asteriskAnimationSpeed = 8.0
+    @State private var asteriskAnimationState = 0
     @State private var scrollProxy: ScrollViewProxy?
     @State private var isNearBottom = true
     @State private var showScrollToBottom = false
     @State private var hasUserScrolled = false
-    @State private var isRecording = false
-    @State private var speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer()
-    @State private var recognitionTask: SFSpeechRecognitionTask?
-    @State private var audioEngine = AVAudioEngine()
-    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    @State private var currentTask: Task<Void, Never>?
     @State private var pendingMessageText: String?
     @State private var viewOpacity: Double = 0.0
     @State private var hasAppliedInitialAnimation = false
-    @State private var isFirstLaunch = true  // New state variable
+    @State private var isFirstLaunch = true
     @State private var onboardingViewModel: OnboardingViewModel?
+    @State private var currentTask: Task<Void, Never>?
+    
+    @StateObject private var dictationHandler = ChatDictationHandler()
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -72,6 +69,7 @@ struct ChatView: View {
         
         // Store the message text before clearing
         pendingMessageText = trimmedText
+        
         
         // Clear the text input immediately
         messageText = ""
@@ -129,6 +127,7 @@ struct ChatView: View {
         assistantMessage.chat = chat
         
         isLoading = true
+        
         hasUserScrolled = false // Reset scroll state for new message
         
         currentTask = Task {
@@ -259,112 +258,28 @@ struct ChatView: View {
             }
             
             if let existingChat = chat, !existingChat.messages.isEmpty {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(existingChat.messages.sorted(by: { $0.createdAt < $1.createdAt })) { message in
-                                ChatMessageBubble(
-                                    message: message,
-                                    onRetry: message.error != nil ? { await retryMessage(message) } : nil,
-                                    showError: errorMessage == nil,
-                                    messageText: $messageText,
-                                    showConfirmation: false
-                                )
-                                .id(message.id)
-                                .transition(.opacity.combined(with: .scale))
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: existingChat.messages.count) { oldCount, newCount in
-                            if !hasUserScrolled || isNearBottom {
-                                withAnimation(.spring(duration: 0.3)) {
-                                    proxy.scrollTo(existingChat.messages.last?.id, anchor: .bottom)
-                                }
-                            } else {
-                                showScrollToBottom = true
-                            }
-                        }
-                        .animation(.smooth(duration: 0.3), value: existingChat.messages)
-                    }
-                    .opacity(viewOpacity)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .onAppear {
+                ChatScrollView(
+                    messages: existingChat.messages,
+                    hasUserScrolled: $hasUserScrolled,
+                    isNearBottom: $isNearBottom,
+                    showScrollToBottom: $showScrollToBottom,
+                    messageText: $messageText,
+                    viewOpacity: $viewOpacity,
+                    onRetry: retryMessage,
+                    onScrollProxySet: { proxy in
                         scrollProxy = proxy
-                        if let lastUserMessage = existingChat.messages.last(where: { $0.role == "user" }) {
-                            proxy.scrollTo(lastUserMessage.id, anchor: .top)
-                        }
                     }
-                    .simultaneousGesture(
-                        DragGesture().onChanged { value in
-                            let threshold: CGFloat = 100
-                            let scrollViewHeight = UIScreen.main.bounds.height
-                            let bottomEdge = value.location.y
-                            isNearBottom = (scrollViewHeight - bottomEdge) < threshold
-                            
-                            if !hasUserScrolled && value.translation.height > 0 {
-                                hasUserScrolled = true
-                            }
-                            
-                            showScrollToBottom = !isNearBottom && hasUserScrolled
-                        }
-                    )
-                    .onTapGesture {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                                     to: nil,
-                                                     from: nil,
-                                                     for: nil)
-                    }
-                    .safeAreaInset(edge: .bottom) {
-                        inputArea
-                    }
-                    .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+                )
+                .safeAreaInset(edge: .bottom) {
+                    inputArea
                 }
-            } 
-            // If there's no chat, show the onboarding view or the
-            else {
-                VStack(spacing: 24) {
-                    Image(systemName: "asterisk")
-                        .font(.largeTitle)
-                        .foregroundStyle(.accent)
-                        .rotationEffect(.degrees(asteriskRotation))
-                        .matchedGeometryEffect(id: "asterisk", in: animation)
-                        .onAppear {
-                            startAsteriskAnimation()
-                        }
-                    
-                    if let viewModel = onboardingViewModel {
-                        VStack(spacing: 16) {
-                            if viewModel.showMessages, let step = viewModel.currentStep {
-                                ForEach(Array(step.content.messages.enumerated()), id: \.offset) { index, message in
-                                    Text(message)
-                                        .font(.title)
-                                        .multilineTextAlignment(.center)
-                                        .opacity(Double(index) <= viewModel.messageAnimationProgress ? 1 : 0)
-                                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                                        .animation(.easeOut(duration: 0.8), value: viewModel.messageAnimationProgress)
-                                }
-                            }
-                        }
-                        .frame(maxWidth: 300)
-                        .opacity(viewModel.viewOpacity)
-                        .onChange(of: viewModel.isComplete) { wasComplete, isComplete in
-                            if isComplete {
-                                Task { @MainActor in
-                                    await handleOnboardingCompletion()
-                                }
-                            }
-                        }
-                    } else if let firstName = settings.first?.firstName, !firstName.isEmpty {
-                        Text("Hi \(firstName). What is in your mind?")
-                            .font(.title)
-                            .multilineTextAlignment(.center)
-                            .matchedGeometryEffect(id: "greeting", in: animation)
-                            .frame(maxWidth: 300)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.background)
+                .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+            } else {
+                ChatEmptyState(
+                    firstName: settings.first?.firstName,
+                    asteriskRotation: $asteriskRotation,
+                    onboardingViewModel: onboardingViewModel
+                )
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                  to: nil,
@@ -374,7 +289,6 @@ struct ChatView: View {
                 .safeAreaInset(edge: .bottom) {
                     inputArea
                 }
-                .transition(.opacity.animation(.easeInOut(duration: 0.3)))
             }
         }
         .opacity(viewOpacity)
@@ -563,7 +477,13 @@ struct ChatView: View {
             print("🎯 Focus state changed: \(wasFocused) -> \(isNowFocused)")
             print("📱 Current view state - viewOpacity: \(viewOpacity), hasAppliedInitialAnimation: \(hasAppliedInitialAnimation)")
         }
+        .onChange(of: dictationHandler.errorMessage) { _, newError in
+            if let error = newError {
+                errorMessage = error
+            }
+        }
     }
+    
     
     // Chat input area
     @ViewBuilder
@@ -571,7 +491,10 @@ struct ChatView: View {
         ChatInputArea(
             messageText: $messageText,
             isLoading: $isLoading,
-            isRecording: $isRecording,
+            isRecording: .init(
+                get: { dictationHandler.isRecording },
+                set: { _ in }
+            ),
             errorMessage: $errorMessage,
             viewOpacity: $viewOpacity,
             inputPlaceholder: onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
@@ -584,7 +507,8 @@ struct ChatView: View {
     }
     
     private func handleError(_ error: Error, for message: ChatMessage) {
-        message.error = error.localizedDescription
+        message.content = "I am sorry but I am getting an error and can't respond right now."
+        message.isThinking = false
         isLoading = false
         if let anthropicError = error as? AnthropicError {
             errorMessage = anthropicError.localizedDescription
@@ -649,149 +573,19 @@ struct ChatView: View {
     }
     
     private func startDictation() {
-        guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            errorMessage = "Speech recognition is not available at this time"
-            return
-        }
-        
-        // First check microphone permission
-        if #available(iOS 17.0, *) {
-            AVAudioApplication.requestRecordPermission { granted in
-                DispatchQueue.main.async {
-                    if !granted {
-                        self.errorMessage = "Tap here to enable microphone access in Settings"
-                        return
-                    }
-                    self.checkSpeechRecognitionPermission()
-                }
-            }
-        } else {
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                DispatchQueue.main.async {
-                    if !granted {
-                        self.errorMessage = "Tap here to enable microphone access in Settings"
-                        return
-                    }
-                    self.checkSpeechRecognitionPermission()
-                }
+        dictationHandler.startDictation { text in
+            isTextFromRecognition = true
+            messageText = text
+            // Reset flag after a small delay
+            Task { @MainActor in
+                try? await Task.sleep(for: .nanoseconds(100_000_000))
+                isTextFromRecognition = false
             }
         }
-    }
-    
-    private func checkSpeechRecognitionPermission() {
-        SFSpeechRecognizer.requestAuthorization { authStatus in
-            DispatchQueue.main.async {
-                switch authStatus {
-                case .authorized:
-                    if self.isRecording {
-                        self.stopDictation()
-                    } else {
-                        do {
-                            try self.startRecording()
-                        } catch {
-                            self.errorMessage = "Failed to start recording: \(error.localizedDescription)"
-                            print("Failed to start recording: \(error)")
-                        }
-                    }
-                case .denied:
-                    self.errorMessage = "Tap here to enable speech recognition in Settings"
-                case .restricted:
-                    self.errorMessage = "Speech recognition is restricted on this device"
-                case .notDetermined:
-                    self.errorMessage = "Speech recognition not yet authorized"
-                @unknown default:
-                    self.errorMessage = "Speech recognition not available"
-                }
-            }
-        }
-    }
-    
-    private func startRecording() throws {
-        // Cancel existing task and request
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        
-        // Configure audio session
-        let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else {
-            throw NSError(domain: "SpeechRecognition", code: -1, 
-                         userInfo: [NSLocalizedDescriptionKey: "Unable to create recognition request"])
-        }
-        
-        recognitionRequest.shouldReportPartialResults = true
-        
-        // For on-device recognition
-        if #available(iOS 13, *) {
-            recognitionRequest.requiresOnDeviceRecognition = true
-        }
-        
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            recognitionRequest.append(buffer)
-        }
-        
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
-            if let result = result {
-                let transcribedText = result.bestTranscription.formattedString
-                
-                // Only update if the transcription has actual content
-                if !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    DispatchQueue.main.async {
-                        print("🎤 Speech recognition update: \(transcribedText)")
-                        self.isTextFromRecognition = true
-                        self.messageText = transcribedText
-                        
-                        // Add a small delay before resetting the flag
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.isTextFromRecognition = false
-                        }
-                    }
-                } else {
-                    print("🎤 Ignoring empty transcription")
-                }
-            }
-            
-            if error != nil || (result?.isFinal ?? false) {
-                print("🎤 Speech recognition ended: \(error?.localizedDescription ?? "Final result")")
-                self.stopDictation()
-            }
-        }
-        
-        audioEngine.prepare()
-        try audioEngine.start()
-        
-        withAnimation {
-            isRecording = true
-        }
-        
-        softHaptics.impactOccurred()
     }
     
     private func stopDictation() {
-        // Cancel recognition task first
-        recognitionTask?.finish()
-        recognitionTask = nil
-        
-        // End audio request
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        
-        // Stop audio engine last
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        
-        withAnimation {
-            isRecording = false
-        }
-        
+        dictationHandler.stopDictation()
         softHaptics.impactOccurred()
     }
     
