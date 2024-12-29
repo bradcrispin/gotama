@@ -500,6 +500,7 @@ struct ChatView: View {
             ),
             errorMessage: $errorMessage,
             viewOpacity: $viewOpacity,
+            isTextFromRecognition: $isTextFromRecognition,
             inputPlaceholder: onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
             showInput: onboardingViewModel?.showInput ?? true,
             onSendMessage: sendMessage,
@@ -576,20 +577,32 @@ struct ChatView: View {
     }
     
     private func startDictation() {
-        dictationHandler.startDictation { text in
+        // Set flag before starting dictation
+        Task { @MainActor in
             isTextFromRecognition = true
-            messageText = text
-            // Reset flag after a small delay
-            Task { @MainActor in
-                try? await Task.sleep(for: .nanoseconds(100_000_000))
-                isTextFromRecognition = false
+            
+            dictationHandler.startDictation { text in
+                Task { @MainActor in
+                    // Ensure we're still in dictation mode
+                    guard dictationHandler.isRecording else { return }
+                    
+                    // Keep flag true and update text
+                    isTextFromRecognition = true
+                    messageText = text
+                }
             }
         }
     }
     
     private func stopDictation() {
-        dictationHandler.stopDictation()
-        softHaptics.impactOccurred()
+        Task { @MainActor in
+            dictationHandler.stopDictation()
+            softHaptics.impactOccurred()
+            
+            // Reset flag after a short delay
+            try? await Task.sleep(for: .milliseconds(300))
+            isTextFromRecognition = false
+        }
     }
     
     private func startNewChat() {

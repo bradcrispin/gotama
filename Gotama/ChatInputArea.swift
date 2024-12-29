@@ -9,6 +9,7 @@ struct ChatInputArea: View {
     @Binding var isRecording: Bool
     @Binding var errorMessage: String?
     @Binding var viewOpacity: Double
+    @Binding var isTextFromRecognition: Bool
     @FocusState private var isFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
     
@@ -23,13 +24,12 @@ struct ChatInputArea: View {
     let inputPlaceholder: String
     let showInput: Bool
     
-    @State private var isTextFromRecognition = false
-    
     init(messageText: Binding<String>,
          isLoading: Binding<Bool>,
          isRecording: Binding<Bool>,
          errorMessage: Binding<String?>,
          viewOpacity: Binding<Double>,
+         isTextFromRecognition: Binding<Bool>,
          inputPlaceholder: String = "Chat with Gotama",
          showInput: Bool = true,
          onSendMessage: @escaping () -> Void,
@@ -41,6 +41,7 @@ struct ChatInputArea: View {
         _isRecording = isRecording
         _errorMessage = errorMessage
         _viewOpacity = viewOpacity
+        _isTextFromRecognition = isTextFromRecognition
         self.inputPlaceholder = inputPlaceholder
         self.showInput = showInput
         self.onSendMessage = onSendMessage
@@ -111,8 +112,17 @@ struct ChatInputArea: View {
                         .onChange(of: messageText) { oldValue, newValue in
                             print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
                             print("🎤 Recording state: \(isRecording), isTextFromRecognition: \(isTextFromRecognition)")
+                            
+                            // Only stop dictation if text was manually changed (not from recognition)
                             if isRecording && !isTextFromRecognition {
-                                onStopDictation()
+                                // Add a small delay to ensure we don't stop dictation prematurely
+                                Task { @MainActor in
+                                    try? await Task.sleep(for: .nanoseconds(100_000_000)) // 100ms delay
+                                    // Double check if we're still recording and it wasn't from recognition
+                                    if isRecording && !isTextFromRecognition {
+                                        onStopDictation()
+                                    }
+                                }
                             }
                         }
                     
@@ -217,6 +227,7 @@ struct ChatInputArea: View {
         isRecording: .constant(false),
         errorMessage: .constant(nil),
         viewOpacity: .constant(1.0),
+        isTextFromRecognition: .constant(false),
         onSendMessage: {},
         onStopGeneration: {},
         onStartDictation: {},
