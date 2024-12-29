@@ -302,12 +302,14 @@ struct ChatView: View {
                 Button {
                     showGotamaProfile = true
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Text("Gotama")
-                            // .font(.headline)
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                         Image(systemName: "chevron.down")
-                            .font(.caption)
+                            .font(.system(size: 10.5))
+                            .imageScale(.small)
+                            .offset(y: 1)
+                            .opacity(0.75)
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                     }
                 }

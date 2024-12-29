@@ -55,7 +55,7 @@ struct ChatInputArea: View {
                         .focused($isFocused)
                         .disabled(isLoading)
                         .opacity(showInput ? 1 : 0)
-                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
+                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .gray) : .primary))
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
                             print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
@@ -112,7 +112,7 @@ struct ChatInputArea: View {
                             colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
                         }
                         .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                            .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
+                            .init(topLeading: 36, bottomLeading: 0, bottomTrailing: 0, topTrailing: 36)))
                         
                         Group {
                             colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
@@ -127,7 +127,7 @@ struct ChatInputArea: View {
                             Color.accent
                                 .opacity(0.8)
                                 .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                                    .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
+                                    .init(topLeading: 36, bottomLeading: 0, bottomTrailing: 0, topTrailing: 36)))
                             
                             Color.accent
                                 .opacity(0.8)
