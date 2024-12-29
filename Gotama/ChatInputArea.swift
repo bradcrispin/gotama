@@ -1,5 +1,7 @@
 import SwiftUI
 import Speech
+import CoreHaptics
+import UIKit
 
 struct ChatInputArea: View {
     @Binding var messageText: String
@@ -9,6 +11,10 @@ struct ChatInputArea: View {
     @Binding var viewOpacity: Double
     @FocusState private var isFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
+    
+    // Change to optional to track initialization
+    @State private var feedbackGenerator: UINotificationFeedbackGenerator?
+    @State private var hapticEngine: CHHapticEngine?
     
     let onSendMessage: () -> Void
     let onStopGeneration: () -> Void
@@ -43,6 +49,51 @@ struct ChatInputArea: View {
         self.onStopDictation = onStopDictation
     }
     
+    private func prepareHaptics() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        do {
+            hapticEngine = try CHHapticEngine()
+            try hapticEngine?.start()
+            
+            // Keep engine alive
+            hapticEngine?.resetHandler = { [weak hapticEngine] in
+                print("🫳 Haptic engine needs reset")
+                do {
+                    try hapticEngine?.start()
+                } catch {
+                    print("🫳 Failed to restart haptic engine: \(error)")
+                }
+            }
+            
+            hapticEngine?.stoppedHandler = { reason in
+                print("🫳 Haptic engine stopped: \(reason)")
+            }
+            
+            print("🫳 Haptic engine initialized successfully")
+        } catch {
+            print("🫳 Failed to create haptic engine: \(error)")
+        }
+    }
+    
+    private func playHapticFeedback() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics,
+              let engine = hapticEngine else { return }
+        
+        do {
+            let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0)
+            let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+            let event = CHHapticEvent(eventType: .hapticTransient, parameters: [intensity, sharpness], relativeTime: 0)
+            
+            let pattern = try CHHapticPattern(events: [event], parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+            print("🫳 Haptic feedback played successfully")
+        } catch {
+            print("🫳 Failed to play haptic: \(error)")
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
@@ -71,6 +122,7 @@ struct ChatInputArea: View {
                         } else if isRecording {
                             onStopDictation()
                         } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            playHapticFeedback()
                             onStartDictation()
                         } else {
                             onSendMessage()
@@ -138,11 +190,22 @@ struct ChatInputArea: View {
                     }
                 }
                 .onChange(of: isRecording) { wasRecording, isNowRecording in
-                    // print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
+                    print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
+                    // Prepare generator for next use when recording stops
+                    if !isNowRecording {
+                        print("🫳 Preparing haptic for next use")
+                        feedbackGenerator?.prepare()
+                    }
                 }
             }
             .opacity(viewOpacity)
             .animation(.easeOut(duration: 0.2), value: viewOpacity)
+        }
+        .onAppear {
+            feedbackGenerator = UINotificationFeedbackGenerator()
+            feedbackGenerator?.prepare()
+            print("🫳 Haptic generator initialized and prepared")
+            prepareHaptics()
         }
     }
 }
