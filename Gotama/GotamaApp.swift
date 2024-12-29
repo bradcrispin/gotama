@@ -8,6 +8,10 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Development Configuration
+/// Set to true to skip launch screen animations during development
+private let skipLaunchScreenForDevelopment = true
+
 @main
 struct GotamaApp: App {
     @State private var showLaunchScreen = true
@@ -16,6 +20,11 @@ struct GotamaApp: App {
     init() {
         // Initialize navigation path to start with new chat
         _navigationPath = State(initialValue: NavigationPath([ChatDestination.new]))
+        
+        // Skip launch screen if configured for development
+        if skipLaunchScreenForDevelopment {
+            _showLaunchScreen = State(initialValue: false)
+        }
     }
     
     var body: some Scene {
