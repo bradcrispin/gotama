@@ -12,23 +12,48 @@ struct RotationAnimation: ViewModifier {
     /// The starting angle in degrees
     let startAngle: Double
     
+    // Timer for controlling the animation
+    @State private var timer: Timer?
+    @State private var lastUpdate: Date = Date()
+    
     func body(content: Content) -> some View {
         content
             .rotationEffect(.degrees(rotation))
             .onChange(of: isAnimating) { wasAnimating, isNowAnimating in
                 if isNowAnimating {
                     startAnimation()
+                } else {
+                    stopAnimation()
                 }
+            }
+            .onDisappear {
+                stopAnimation()
             }
     }
     
     private func startAnimation() {
-        // Reset rotation to starting position
-        rotation = startAngle
-        withAnimation(.easeInOut(duration: duration)
-            .repeatForever(autoreverses: false)) {
-                rotation = startAngle + 360 // One full rotation
+        print("Starting rotation animation")
+        lastUpdate = Date()
+        // Create a timer that updates 60 times per second
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { _ in
+            let now = Date()
+            let elapsed = now.timeIntervalSince(lastUpdate)
+            lastUpdate = now
+            
+            // Calculate how many degrees to rotate based on elapsed time
+            let degreesPerSecond = 360.0 / duration
+            let rotationAmount = degreesPerSecond * elapsed
+            
+            withAnimation(.linear(duration: 1.0/60.0)) {
+                rotation += rotationAmount
             }
+        }
+    }
+    
+    private func stopAnimation() {
+        print("Stopping rotation animation")
+        timer?.invalidate()
+        timer = nil
     }
 }
 

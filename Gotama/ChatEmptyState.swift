@@ -26,10 +26,11 @@ struct ChatEmptyState: View {
     @Binding var asteriskRotation: Double
     /// Optional onboarding view model for new users
     let onboardingViewModel: OnboardingViewModel?
+    /// Binding to control animation state
+    @Binding var isAnimating: Bool
     
     // MARK: - Animation Properties
     @Namespace private var animation
-    @State private var isAsteriskAnimating = false
     
     // MARK: - Body
     var body: some View {
@@ -40,12 +41,23 @@ struct ChatEmptyState: View {
                 .rotationAnimation(
                     rotation: $asteriskRotation,
                     isAnimating: .init(
-                        get: { isAsteriskAnimating },
-                        set: { isAsteriskAnimating = $0 }
-                    )
+                        get: { isAnimating },
+                        set: { isAnimating = $0 }
+                    ),
+                    duration: 8.0,
+                    startAngle: isAnimating ? asteriskRotation : asteriskRotation
                 )
                 .matchedGeometryEffect(id: "asterisk", in: animation)
-                .onAppear { isAsteriskAnimating = true }
+                .onAppear { 
+                    print("ChatEmptyState: Starting animation")
+                    isAnimating = true 
+                }
+                .onTapGesture {
+                    isAnimating.toggle()
+                    print("ChatEmptyState: Tap detected - Animation state: \(isAnimating)")
+                }
+                .opacity(isAnimating ? 1.0 : 0.6) // Visual feedback for paused state
+                .contentShape(Rectangle()) // Ensures the entire area is tappable
             
             if let viewModel = onboardingViewModel {
                 VStack(spacing: 16) {
@@ -82,7 +94,8 @@ struct ChatEmptyState: View {
     ChatEmptyState(
         firstName: "John",
         asteriskRotation: .constant(45),
-        onboardingViewModel: nil
+        onboardingViewModel: nil,
+        isAnimating: .constant(true)
     )
 }
 
@@ -90,6 +103,7 @@ struct ChatEmptyState: View {
     ChatEmptyState(
         firstName: nil,
         asteriskRotation: .constant(45),
-        onboardingViewModel: OnboardingViewModel(modelContext: try! ModelContainer(for: Settings.self).mainContext)
+        onboardingViewModel: OnboardingViewModel(modelContext: try! ModelContainer(for: Settings.self).mainContext),
+        isAnimating: .constant(true)
     )
 } 

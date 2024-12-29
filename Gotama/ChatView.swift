@@ -278,7 +278,8 @@ struct ChatView: View {
                 ChatEmptyState(
                     firstName: settings.first?.firstName,
                     asteriskRotation: $asteriskRotation,
-                    onboardingViewModel: onboardingViewModel
+                    onboardingViewModel: onboardingViewModel,
+                    isAnimating: $isAsteriskAnimating
                 )
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
