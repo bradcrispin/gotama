@@ -29,7 +29,6 @@ private struct MarkdownText: View {
         let lineArray = text.components(separatedBy: .newlines)
         
         for (index, line) in lineArray.enumerated() {
-            // Count leading spaces to determine indent level
             let indentLevel = line.prefix(while: { $0 == " " }).count / 2
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
@@ -98,7 +97,7 @@ private struct MarkdownText: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(lines) { line in
+            ForEach(Array(zip(lines.indices, lines)), id: \.1.id) { index, line in
                 switch line.type {
                 case .text:
                     Text(line.content)
@@ -115,12 +114,30 @@ private struct MarkdownText: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .padding(.vertical, 4)
                 case .unorderedList:
+                    // Find the last numbered list item and its indentation
+                    let lastNumberedIndex = (0..<index).reversed().first { i in
+                        if case .orderedList = lines[i].type {
+                            return true
+                        }
+                        return false
+                    }
+                    
+                    let shouldNest = lastNumberedIndex.map { lastIndex in
+                        // Stay nested if we're at same or greater indent than the numbered item
+                        // and haven't gone back to a lower indent level
+                        let numberedIndent = lines[lastIndex].indentLevel
+                        let hasStayedNested = (lastIndex..<index).allSatisfy { i in
+                            lines[i].indentLevel >= numberedIndent
+                        }
+                        return line.indentLevel >= numberedIndent && hasStayedNested
+                    } ?? false
+                    
                     HStack(alignment: .top, spacing: 8) {
-                        Text(line.indentLevel > 0 ? "∘" : "-")  // Use hollow middle dot (ring operator) for nested items
+                        Text("-")
                             .foregroundStyle(.secondary)
                         Text(line.content)
                     }
-                    .padding(.leading, CGFloat(line.indentLevel * 16))
+                    .padding(.leading, CGFloat(shouldNest ? 16 : line.indentLevel * 16))
                     .padding(.vertical, 2)
                 case .orderedList(let number):
                     HStack(alignment: .top, spacing: 8) {
@@ -129,7 +146,7 @@ private struct MarkdownText: View {
                             .frame(width: 24, alignment: .trailing)
                         Text(line.content)
                     }
-                    .padding(.leading, CGFloat(line.indentLevel * 16))
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 2)
                 }
             }
