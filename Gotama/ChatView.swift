@@ -247,7 +247,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let error = errorMessage {
-                ErrorBanner(message: error) {
+                ChatErrorBanner(message: error) {
                     if error.contains("API key") {
                         showSettings = true
                     } else if error.contains("microphone") || error.contains("speech recognition") {
@@ -263,7 +263,7 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(existingChat.messages.sorted(by: { $0.createdAt < $1.createdAt })) { message in
-                                MessageBubble(
+                                ChatMessageBubble(
                                     message: message,
                                     onRetry: message.error != nil ? { await retryMessage(message) } : nil,
                                     showError: errorMessage == nil,
@@ -568,106 +568,19 @@ struct ChatView: View {
     // Chat input area
     @ViewBuilder
     private var inputArea: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                // Wrap TextField and button in a container
-                HStack(spacing: 0) {
-                    TextField(onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
-                             text: $messageText, axis: .vertical)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .focused($isFocused)
-                        .disabled(isLoading)
-                        .opacity(onboardingViewModel?.showInput ?? true ? 1 : 0)
-                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .primary.opacity(0.9)) : .primary))
-                        .textFieldStyle(.plain)
-                        .onChange(of: messageText) { oldValue, newValue in
-                            print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
-                            print("🎤 Recording state: \(isRecording), isTextFromRecognition: \(isTextFromRecognition)")
-                            if isRecording && !isTextFromRecognition {
-                                stopDictation()
-                            }
-                        }
-                    
-                    Button {
-                        if isLoading {
-                            stopGeneration()
-                        } else if isRecording {
-                            stopDictation()
-                        } else if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            startDictation()
-                        } else {
-                            sendMessage()
-                        }
-                    } label: {
-                        Image(systemName: isLoading ? "stop.circle.fill" :
-                              (isRecording ? "mic.fill" : 
-                               (messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic" : "arrow.up.circle.fill")))
-                            .font(.title2)
-                            .foregroundColor(isLoading ? Color(white: 0.6) : (isRecording ? .white : .accent))
-                            .symbolEffect(.bounce, value: isRecording)
-                            .modifier(PulseEffect(isActive: isRecording))
-                    }
-                    .padding(.horizontal, 12)
-                }
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    TapGesture()
-                        .onEnded { _ in
-                            print("👆 Input area tapped, current focus state: \(isFocused)")
-                            guard !isFocused else { return }
-                            Task { @MainActor in
-                                try? await Task.sleep(for: .nanoseconds(1))  // Minimal delay to ensure view is ready
-                                print("⌨️ Setting focus after tap")
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    isFocused = true
-                                }
-                            }
-                        }
-                )
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background {
-                ZStack {
-                    //   layer - always opaque
-                    VStack(spacing: 0) {
-                        Group {
-                            colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
-                        }
-                        .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                            .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
-                        
-                        Group {
-                            colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
-                        }
-                        .frame(maxHeight: .infinity)
-                        .edgesIgnoringSafeArea(.bottom)
-                    }
-                    
-                    // Accent color layer when recording
-                    if isRecording {
-                        VStack(spacing: 0) {
-                            Color.accent
-                                .opacity(0.8)
-                                .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                                    .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16)))
-                            
-                            Color.accent
-                                .opacity(0.8)
-                                .frame(maxHeight: .infinity)
-                                .edgesIgnoringSafeArea(.bottom)
-                        }
-                        .transition(.opacity)
-                    }
-                }
-                .onChange(of: isRecording) { wasRecording, isNowRecording in
-                    // print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
-                }
-            }
-            .opacity(viewOpacity)
-            .animation(.easeOut(duration: 0.2), value: viewOpacity)
-        }
+        ChatInputArea(
+            messageText: $messageText,
+            isLoading: $isLoading,
+            isRecording: $isRecording,
+            errorMessage: $errorMessage,
+            viewOpacity: $viewOpacity,
+            inputPlaceholder: onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
+            showInput: onboardingViewModel?.showInput ?? true,
+            onSendMessage: sendMessage,
+            onStopGeneration: stopGeneration,
+            onStartDictation: startDictation,
+            onStopDictation: stopDictation
+        )
     }
     
     private func handleError(_ error: Error, for message: ChatMessage) {
@@ -929,236 +842,6 @@ struct ChatView: View {
             
         } catch {
             print("❌ Error handling onboarding completion: \(error)")
-        }
-    }
-}
-
-struct MessageBubble: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let message: ChatMessage
-    var onRetry: (() async -> Void)?
-    let showError: Bool
-    @State private var showCopied = false
-    @State private var showDeleteConfirmation = false
-    @State private var showEditConfirmation = false
-    @Environment(\.modelContext) private var modelContext
-    
-    // Add binding to messageText from ChatView
-    @Binding var messageText: String
-    let showConfirmation: Bool
-    
-    var body: some View {
-        HStack {
-            if message.role == "user" {
-                Spacer()
-            }
-            
-            VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 8) {
-                if message.isThinking == true {
-                    ThinkingIndicator()
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                } else {
-                    Text(message.content)
-                        .textSelection(.enabled)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, message.role == "user" ? 12 : 16)
-                        .contextMenu(menuItems: {
-                            Button {
-                                UIPasteboard.general.string = message.content
-                            } label: {
-                                Label("Copy", systemImage: "doc.on.doc")
-                            }
-                            
-                            if message.role == "user" {
-                                Button {
-                                    editMessage()
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                
-                                Button(role: .destructive) {
-                                    deleteMessageAndFollowing()
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                        })
-                    
-                    if showConfirmation {
-                        HStack(spacing: 12) {
-                            Button {
-                                messageText = "Yes"
-                            } label: {
-                                Text("Yes")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color.accent)
-                                    .foregroundColor(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                            
-                            Button {
-                                messageText = "No"
-                            } label: {
-                                Text("No")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color(.systemGray5))
-                                    .foregroundColor(.primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
-                }
-                
-                if showError, let error = message.error {
-                    HStack(spacing: 8) {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        if let onRetry {
-                            Button {
-                                Task {
-                                    await onRetry()
-                                }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                    .padding(.top, 4)
-                }
-            }
-            .background(message.role == "user" ? (colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.93)) : nil)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            
-            if message.role == "assistant" {
-                Spacer()
-            }
-        }
-        .alert("Edit Message", isPresented: $showEditConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Edit", role: .destructive) {
-                editMessage()
-            }
-        } message: {
-            Text("Editing and resending this message will delete all messages that follow")
-        }
-        .alert("Delete Message", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                deleteMessageAndFollowing()
-            }
-        } message: {
-            Text("Deleting this message will delete all messages that follow")
-        }
-    }
-    
-    private func editMessage() {
-        print("✏️ Starting message edit")
-        
-        // Set the message text for editing
-        messageText = message.content
-        print("📝 Loaded message text for editing: \(messageText)")
-        
-        // Check if this is the first message and update chat title
-        if let chat = message.chat,
-           let firstMessage = chat.messages.first,
-           firstMessage.id == message.id {
-            chat.title = messageText
-        }
-        
-        // Delete this and following messages
-        deleteMessageAndFollowing()
-    }
-    
-    private func deleteMessageAndFollowing() {
-        guard let chat = message.chat else {
-            print("❌ Delete failed: No chat associated with message")
-            return
-        }
-        
-        // Find the index of the current message
-        guard let currentIndex = chat.messages.firstIndex(where: { $0.id == message.id }) else {
-            print("❌ Delete failed: Could not find message index in chat")
-            return
-        }
-        
-        print("🗑️ Deleting message at index \(currentIndex) and \(chat.messages.count - currentIndex - 1) following messages")
-        
-        // Get all messages from current to end
-        let messagesToDelete = Array(chat.messages[currentIndex...])
-        print("📝 Messages to delete: \(messagesToDelete.count)")
-        
-        // Remove messages from chat's messages array first
-        withAnimation {
-            chat.messages.removeSubrange(currentIndex...)
-        }
-        
-        // Then delete from model context
-        for message in messagesToDelete {
-            print("🗑️ Deleting message: \(message.id)")
-            modelContext.delete(message)
-        }
-        
-        print("🗑️ Deletion complete. Remaining messages: \(chat.messages.count)")
-    }
-}
-
-struct ThinkingIndicator: View {
-    @State private var rotation = 0.0
-    
-    var body: some View {
-        Image(systemName: "asterisk")
-            .font(.title3)
-            .foregroundStyle(.accent)
-            .rotationEffect(.degrees(rotation))
-            .onAppear {
-                withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-            }
-    }
-}
-
-struct ErrorBanner: View {
-    let message: String
-    var onTap: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(colorScheme == .dark ? .secondary : .secondary)
-            
-            Text(message)
-                .foregroundStyle(colorScheme == .dark ? .secondary : .secondary)
-            
-            Spacer()
-        }
-        .padding()
-        .background(colorScheme == .dark ? Color(white: 0.1) : Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
-        .padding(.top)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
-    }
-}
-
-struct PulseEffect: ViewModifier {
-    let isActive: Bool
-    
-    func body(content: Content) -> some View {
-        if isActive {
-            content.symbolEffect(.pulse.byLayer, options: .repeating)
-        } else {
-            content
         }
     }
 }
