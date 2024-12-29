@@ -41,65 +41,108 @@ struct ChatScrollView: View {
     /// Callback for setting the scroll proxy
     let onScrollProxySet: (ScrollViewProxy) -> Void
     
+    // Track content size changes
+    @State private var contentHeight: CGFloat = 0
+    @State private var scrollViewHeight: CGFloat = 0
+    
     // MARK: - Body
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(messages.sorted(by: { $0.createdAt < $1.createdAt })) { message in
-                        ChatMessageBubble(
-                            message: message,
-                            onRetry: message.error != nil ? { await onRetry(message) } : nil,
-                            showError: true,
-                            messageText: $messageText,
-                            showConfirmation: false
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // Content size tracking view
+                    GeometryReader { contentGeometry in
+                        Color.clear.preference(
+                            key: ContentSizePreferenceKey.self,
+                            value: contentGeometry.size
                         )
-                        .id(message.id)
-                        .transition(.opacity.combined(with: .scale))
                     }
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .onChange(of: messages.count) { oldCount, newCount in
-                    if !hasUserScrolled || isNearBottom {
-                        withAnimation(.spring(duration: 0.3)) {
-                            proxy.scrollTo(messages.last?.id, anchor: .bottom)
+                    
+                    LazyVStack(spacing: 16) {
+                        ForEach(messages.sorted(by: { $0.createdAt < $1.createdAt })) { message in
+                            ChatMessageBubble(
+                                message: message,
+                                onRetry: message.error != nil ? { await onRetry(message) } : nil,
+                                showError: true,
+                                messageText: $messageText,
+                                showConfirmation: false
+                            )
+                            .id(message.id)
+                            .transition(.opacity.combined(with: .scale))
                         }
-                    } else {
-                        showScrollToBottom = true
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: messages.count) { oldCount, newCount in
+                        print("📜 Messages count changed: \(oldCount) -> \(newCount)")
+                        print("📏 Content height: \(contentHeight), ScrollView height: \(scrollViewHeight)")
+                        
+                        if !hasUserScrolled || isNearBottom {
+                            withAnimation(.spring(duration: 0.3)) {
+                                proxy.scrollTo(messages.last?.id, anchor: .bottom)
+                            }
+                            print("🔄 Auto-scrolling to bottom")
+                        } else {
+                            showScrollToBottom = true
+                            print("⚠️ User has scrolled up, showing scroll button")
+                        }
                     }
                 }
-                .animation(.smooth(duration: 0.3), value: messages)
-            }
-            .opacity(viewOpacity)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .onAppear {
-                onScrollProxySet(proxy)
-                if let lastUserMessage = messages.last(where: { $0.role == "user" }) {
-                    proxy.scrollTo(lastUserMessage.id, anchor: .top)
-                }
-            }
-            .simultaneousGesture(
-                DragGesture().onChanged { value in
-                    let threshold: CGFloat = 100
-                    let scrollViewHeight = UIScreen.main.bounds.height
-                    let bottomEdge = value.location.y
-                    isNearBottom = (scrollViewHeight - bottomEdge) < threshold
-                    
-                    if !hasUserScrolled && value.translation.height > 0 {
-                        hasUserScrolled = true
+                .opacity(viewOpacity)
+                // Fix the frame to prevent resizing
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: geometry.size.height,
+                    alignment: .bottom
+                )
+                .onAppear {
+                    scrollViewHeight = geometry.size.height
+                    onScrollProxySet(proxy)
+                    if let lastUserMessage = messages.last(where: { $0.role == "user" }) {
+                        proxy.scrollTo(lastUserMessage.id, anchor: .top)
+                        print("📍 Scrolling to last user message")
                     }
-                    
-                    showScrollToBottom = !isNearBottom && hasUserScrolled
                 }
-            )
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                             to: nil,
-                                             from: nil,
-                                             for: nil)
+                .onChange(of: geometry.size) { oldSize, newSize in
+                    print("📐 ScrollView size changed: \(oldSize) -> \(newSize)")
+                    scrollViewHeight = newSize.height
+                }
+                .simultaneousGesture(
+                    DragGesture().onChanged { value in
+                        let threshold: CGFloat = 100
+                        let bottomEdge = value.location.y
+                        let wasNearBottom = isNearBottom
+                        isNearBottom = (scrollViewHeight - bottomEdge) < threshold
+                        
+                        if wasNearBottom != isNearBottom {
+                            print("📍 Near bottom changed: \(wasNearBottom) -> \(isNearBottom)")
+                        }
+                        
+                        if !hasUserScrolled && value.translation.height > 0 {
+                            hasUserScrolled = true
+                            print("👆 User started scrolling")
+                        }
+                        
+                        showScrollToBottom = !isNearBottom && hasUserScrolled
+                    }
+                )
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                 to: nil,
+                                                 from: nil,
+                                                 for: nil)
+                }
             }
         }
+    }
+}
+
+// MARK: - Preference Key for Content Size
+private struct ContentSizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
     }
 }
 

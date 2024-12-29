@@ -208,8 +208,7 @@ struct ChatInputArea: View {
                     }
                 }
             }
-            .opacity(viewOpacity)
-            .animation(.easeOut(duration: 0.2), value: viewOpacity)
+            .animation(.easeOut(duration: 0.2), value: showInput)
         }
         .onAppear {
             feedbackGenerator = UINotificationFeedbackGenerator()

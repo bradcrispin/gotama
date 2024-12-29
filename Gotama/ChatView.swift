@@ -257,42 +257,43 @@ struct ChatView: View {
                 }
             }
             
-            if let existingChat = chat, !existingChat.messages.isEmpty {
-                ChatScrollView(
-                    messages: existingChat.messages,
-                    hasUserScrolled: $hasUserScrolled,
-                    isNearBottom: $isNearBottom,
-                    showScrollToBottom: $showScrollToBottom,
-                    messageText: $messageText,
-                    viewOpacity: $viewOpacity,
-                    onRetry: retryMessage,
-                    onScrollProxySet: { proxy in
-                        scrollProxy = proxy
+            // Content area with opacity animation
+            ZStack {
+                if let existingChat = chat, !existingChat.messages.isEmpty {
+                    ChatScrollView(
+                        messages: existingChat.messages,
+                        hasUserScrolled: $hasUserScrolled,
+                        isNearBottom: $isNearBottom,
+                        showScrollToBottom: $showScrollToBottom,
+                        messageText: $messageText,
+                        viewOpacity: $viewOpacity,
+                        onRetry: retryMessage,
+                        onScrollProxySet: { proxy in
+                            scrollProxy = proxy
+                        }
+                    )
+                    .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+                } else {
+                    ChatEmptyState(
+                        firstName: settings.first?.firstName,
+                        asteriskRotation: $asteriskRotation,
+                        onboardingViewModel: onboardingViewModel,
+                        isAnimating: $isAsteriskAnimating
+                    )
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                     to: nil,
+                                                     from: nil,
+                                                     for: nil)
                     }
-                )
-                .safeAreaInset(edge: .bottom) {
-                    inputArea
-                }
-                .transition(.opacity.animation(.easeInOut(duration: 0.3)))
-            } else {
-                ChatEmptyState(
-                    firstName: settings.first?.firstName,
-                    asteriskRotation: $asteriskRotation,
-                    onboardingViewModel: onboardingViewModel,
-                    isAnimating: $isAsteriskAnimating
-                )
-                .onTapGesture {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                                 to: nil,
-                                                 from: nil,
-                                                 for: nil)
-                }
-                .safeAreaInset(edge: .bottom) {
-                    inputArea
                 }
             }
+            .opacity(viewOpacity)
+            .safeAreaInset(edge: .bottom) {
+                // Input area outside of opacity animation
+                inputArea
+            }
         }
-        .opacity(viewOpacity)
         .animation(.spring(duration: 0.4), value: chat?.messages.isEmpty)
         .animation(.spring(duration: 0.4), value: chat?.id)
         .toolUnlockCelebration()
@@ -499,7 +500,7 @@ struct ChatView: View {
                 set: { _ in }
             ),
             errorMessage: $errorMessage,
-            viewOpacity: $viewOpacity,
+            viewOpacity: .constant(1.0), // Always show input area
             isTextFromRecognition: $isTextFromRecognition,
             inputPlaceholder: onboardingViewModel?.currentStep?.content.inputPlaceholder ?? "Chat with Gotama",
             showInput: onboardingViewModel?.showInput ?? true,
