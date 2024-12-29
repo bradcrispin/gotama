@@ -106,7 +106,7 @@ struct ChatInputArea: View {
                         .focused($isFocused)
                         .disabled(isLoading)
                         .opacity(showInput ? 1 : 0)
-                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .secondary : .gray) : .primary))
+                        .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .white : .gray) : .primary))
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
                             print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")

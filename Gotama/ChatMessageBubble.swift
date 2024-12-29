@@ -1,6 +1,142 @@
 import SwiftUI
 import SwiftData
 
+/// A view that renders markdown text with support for code blocks and lists
+private struct MarkdownText: View {
+    let text: String
+    
+    private struct Line: Identifiable {
+        let id = UUID()
+        let content: String
+        let type: LineType
+        let index: Int
+        let indentLevel: Int
+        
+        enum LineType {
+            case text
+            case emptyLine
+            case code
+            case unorderedList
+            case orderedList(number: String)
+        }
+    }
+    
+    private var lines: [Line] {
+        var result: [Line] = []
+        var inCodeBlock = false
+        var currentCode = ""
+        
+        let lineArray = text.components(separatedBy: .newlines)
+        
+        for (index, line) in lineArray.enumerated() {
+            // Count leading spaces to determine indent level
+            let indentLevel = line.prefix(while: { $0 == " " }).count / 2
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Handle empty lines
+            if trimmedLine.isEmpty {
+                if !inCodeBlock {
+                    result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0))
+                }
+                continue
+            }
+            
+            if trimmedLine.hasPrefix("```") {
+                if inCodeBlock {
+                    // End code block
+                    if !currentCode.isEmpty {
+                        result.append(Line(content: currentCode, type: .code, index: index, indentLevel: 0))
+                        currentCode = ""
+                    }
+                    inCodeBlock = false
+                } else {
+                    // Start code block
+                    inCodeBlock = true
+                }
+                continue
+            }
+            
+            if inCodeBlock {
+                if !currentCode.isEmpty {
+                    currentCode += "\n"
+                }
+                currentCode += line
+                continue
+            }
+            
+            // Handle lists and regular text
+            if let _ = ["- ", "* ", "• "].first(where: { trimmedLine.hasPrefix($0) }) {
+                result.append(Line(
+                    content: String(trimmedLine.dropFirst(2)),
+                    type: .unorderedList,
+                    index: index,
+                    indentLevel: indentLevel
+                ))
+            } else if let firstWord = trimmedLine.components(separatedBy: .whitespaces).first,
+                      firstWord.hasSuffix("."),
+                      firstWord.dropLast().allSatisfy({ $0.isNumber }) {
+                // Preserve the original number without the dot
+                let number = String(firstWord.dropLast())
+                result.append(Line(
+                    content: String(trimmedLine.dropFirst(firstWord.count + 1)),
+                    type: .orderedList(number: number),
+                    index: index,
+                    indentLevel: indentLevel
+                ))
+            } else {
+                result.append(Line(content: trimmedLine, type: .text, index: index, indentLevel: indentLevel))
+            }
+        }
+        
+        // Add any remaining code block
+        if !currentCode.isEmpty {
+            result.append(Line(content: currentCode, type: .code, index: lineArray.count, indentLevel: 0))
+        }
+        
+        return result
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(lines) { line in
+                switch line.type {
+                case .text:
+                    Text(line.content)
+                        .padding(.vertical, 2)
+                case .emptyLine:
+                    Spacer()
+                        .frame(height: 12)
+                case .code:
+                    Text(line.content)
+                        .font(.system(.body, design: .monospaced))
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.systemGray6))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.vertical, 4)
+                case .unorderedList:
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(line.indentLevel > 0 ? "∘" : "-")  // Use hollow middle dot (ring operator) for nested items
+                            .foregroundStyle(.secondary)
+                        Text(line.content)
+                    }
+                    .padding(.leading, CGFloat(line.indentLevel * 16))
+                    .padding(.vertical, 2)
+                case .orderedList(let number):
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("\(number).")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, alignment: .trailing)
+                        Text(line.content)
+                    }
+                    .padding(.leading, CGFloat(line.indentLevel * 16))
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+}
+
 /// A view component that displays a single message in the chat interface.
 /// Handles both user and assistant messages with different styling and interaction options.
 ///
@@ -47,7 +183,7 @@ struct ChatMessageBubble: View {
                         .padding(.vertical, 4)
                         .padding(.horizontal, 8)
                 } else {
-                    Text(message.content)
+                    MarkdownText(text: message.content)
                         .textSelection(.enabled)
                         .padding(.vertical, 8)
                         .padding(.horizontal, message.role == "user" ? 12 : 16)
