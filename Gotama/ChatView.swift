@@ -39,6 +39,8 @@ struct ChatView: View {
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
     private let anthropic = AnthropicClient()
     
+    private let citationHandler = CitationHandler()
+    
     private func updateCanCreateNewChat() {
         if let currentChat = chat {
             canCreateNewChat = currentChat.messages.contains(where: { $0.role == "assistant" && ($0.isThinking ?? false) == false })
@@ -69,7 +71,6 @@ struct ChatView: View {
         
         // Store the message text before clearing
         pendingMessageText = trimmedText
-        
         
         // Clear the text input immediately
         messageText = ""
@@ -149,8 +150,7 @@ struct ChatView: View {
                 let stream = try await anthropic.sendMessage(trimmedText, settings: settings.first, previousMessages: previousMessages)
                 
                 let startTime = Date()
-                var inCitationBlock = false
-                var citationBuffer = ""
+                citationHandler.reset() // Reset citation handler state
                 
                 for try await text in stream {
                     chunkCount += 1
@@ -171,49 +171,25 @@ struct ChatView: View {
                         }
                     }
                     
-                    // Handle citation blocks
-                    if text.contains("<citation>") || inCitationBlock {
-                        if !inCitationBlock {
-                            print("📚 Starting citation block")
-                            inCitationBlock = true
-                            citationBuffer = text
-                        } else {
-                            print("📚 Buffering citation chunk: \(text)")
-                            citationBuffer += text
-                            // Check for complete closing tag or partial closing tag
-                            if text.contains("</citation>") || 
-                               (citationBuffer.contains("</citation") && text.contains(">")) {
-                                print("📚 Completing citation block")
-                                inCitationBlock = false
-                                print("📚 Citation content: \(citationBuffer)")
-                                // Add a small delay before showing the complete citation block
-                                try await Task.sleep(for: .milliseconds(50))
-                                await MainActor.run {
-                                    print("📚 Adding citation to message content")
-                                    assistantMessage.content += citationBuffer
-                                    citationBuffer = "" // Clear the buffer after using it
-                                }
+                    let (shouldBuffer, processedText) = citationHandler.handleStreamChunk(text)
+                    if !shouldBuffer, let text = processedText {
+                        // Add delay for non-citation text
+                        try await Task.sleep(for: .milliseconds(15))
+                        
+                        await MainActor.run {
+                            print("📝 Adding text to message: \(text)")
+                            assistantMessage.content += text
+                            
+                            // Provide subtle haptic feedback every few chunks
+                            if chunkCount % 5 == 0 {
+                                softHaptics.impactOccurred(intensity: 0.4)
                             }
-                        }
-                        continue
-                    }
-                    
-                    // Add delay for non-citation text
-                    try await Task.sleep(for: .milliseconds(15))
-                    
-                    await MainActor.run {
-                        print("📝 Adding regular text: \(text)")
-                        assistantMessage.content += text
-                        
-                        // Provide subtle haptic feedback every few chunks
-                        if chunkCount % 5 == 0 {
-                            softHaptics.impactOccurred(intensity: 0.4)
-                        }
-                        
-                        // Continuously update scroll position as content grows
-                        if let proxy = scrollProxy, !hasUserScrolled {
-                            withAnimation(.spring(duration: 0.3)) {
-                                proxy.scrollTo(userMessage.id, anchor: .top)
+                            
+                            // Continuously update scroll position as content grows
+                            if let proxy = scrollProxy, !hasUserScrolled {
+                                withAnimation(.spring(duration: 0.3)) {
+                                    proxy.scrollTo(userMessage.id, anchor: .top)
+                                }
                             }
                         }
                     }
@@ -564,10 +540,6 @@ struct ChatView: View {
         }
         
         do {
-            var responseText = ""
-            var inCitationBlock = false
-            var citationBuffer = ""
-            
             print("🔄 Retrying message stream...")
             let previousMessages = Array(chat?.messages.prefix(while: { $0 !== message }) ?? [])
             print("📨 Retrying with \(previousMessages.count) previous messages:")
@@ -577,44 +549,18 @@ struct ChatView: View {
             
             let stream = try await anthropic.sendMessage(userMessage.content, settings: settings.first, previousMessages: previousMessages)
             
+            citationHandler.reset() // Reset citation handler state
+            
             for try await text in stream {
-                print("📥 Retry chunk: \(text)")
-                
-                // Handle citation blocks
-                if text.contains("<citation>") || inCitationBlock {
-                    if !inCitationBlock {
-                        print("📚 Starting citation block (retry)")
-                        inCitationBlock = true
-                        citationBuffer = text
-                    } else {
-                        print("📚 Buffering citation chunk (retry): \(text)")
-                        citationBuffer += text
-                        // Check for complete closing tag or partial closing tag
-                        if text.contains("</citation>") || 
-                           (citationBuffer.contains("</citation") && text.contains(">")) {
-                            print("📚 Completing citation block (retry)")
-                            inCitationBlock = false
-                            print("📚 Citation content (retry): \(citationBuffer)")
-                            // Add a small delay before showing the complete citation block
-                            try await Task.sleep(for: .milliseconds(50))
-                            await MainActor.run {
-                                print("📚 Adding citation to message content (retry)")
-                                responseText += citationBuffer
-                                message.content = responseText
-                                citationBuffer = "" // Clear the buffer after using it
-                            }
-                        }
+                let (shouldBuffer, processedText) = citationHandler.handleStreamChunk(text)
+                if !shouldBuffer, let text = processedText {
+                    // Add delay for non-citation text
+                    try await Task.sleep(for: .milliseconds(15))
+                    
+                    await MainActor.run {
+                        print("📝 Adding text to message (retry): \(text)")
+                        message.content += text
                     }
-                    continue
-                }
-                
-                // Add delay for non-citation text
-                try await Task.sleep(for: .milliseconds(15))
-                
-                await MainActor.run {
-                    print("📝 Adding regular text (retry): \(text)")
-                    responseText += text
-                    message.content = responseText
                 }
             }
             

@@ -157,7 +157,7 @@ class ChatDictationHandler: ObservableObject {
                 
                 // Only update if the transcription has actual content
                 if !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    print("🎤 Speech recognition update: \(transcribedText)")
+                    // print("🎤 Speech recognition update: \(transcribedText)")
                     onTranscription(transcribedText)
                 } else {
                     print("🎤 Ignoring empty transcription")
@@ -165,7 +165,7 @@ class ChatDictationHandler: ObservableObject {
             }
             
             if error != nil || (result?.isFinal ?? false) {
-                print("🎤 Speech recognition ended: \(error?.localizedDescription ?? "Final result")")
+                // print("🎤 Speech recognition ended: \(error?.localizedDescription ?? "Final result")")
                 self.stopDictation()
             }
         }

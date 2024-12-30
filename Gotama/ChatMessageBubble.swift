@@ -2,11 +2,21 @@ import SwiftUI
 import SwiftData
 
 /// A view that displays a citation block with a copy button
+/// 
+/// Citation format:
+/// ```
+/// <citation>
+/// <verse>Verse reference</verse>
+/// <pali>Pali text</pali>
+/// <translation>English translation</translation>
+/// </citation>
+/// ```
 private struct CitationBlock: View {
     @Environment(\.colorScheme) private var colorScheme
     let content: String
     @State private var showCopied = false
     @State private var showPali = false
+    @State private var copyTimer: Task<Void, Never>?
     
     private struct CitationContent {
         let verse: String?
@@ -14,29 +24,70 @@ private struct CitationBlock: View {
         let translation: String?
         
         init(from text: String) {
-            // Extract verse
-            verse = text.components(separatedBy: "<verse>")
-                .dropFirst()
-                .first?
-                .components(separatedBy: "</verse>")
-                .first?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            print("📚 Parsing citation from text: \(text)")
             
-            // Extract pali
-            pali = text.components(separatedBy: "<pali>")
-                .dropFirst()
-                .first?
-                .components(separatedBy: "</pali>")
-                .first?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            // Simple patterns to match each tag
+            let versePattern = "<verse>([\\s\\S]*?)</verse>"
+            let paliPattern = "<pali>([\\s\\S]*?)</pali>"
+            let translationPattern = "<translation>([\\s\\S]*?)</translation>"
             
-            // Extract translation
-            translation = text.components(separatedBy: "<translation>")
-                .dropFirst()
-                .first?
-                .components(separatedBy: "</translation>")
-                .first?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            // Initialize variables
+            var parsedVerse: String? = nil
+            var parsedPali: String? = nil
+            var parsedTranslation: String? = nil
+            
+            do {
+                // Extract verse
+                if let verseMatch = try NSRegularExpression(pattern: versePattern, options: [])
+                    .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
+                   let verseRange = Range(verseMatch.range(at: 1), in: text) {
+                    parsedVerse = String(text[verseRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    // print("📚 Parsed verse: \(parsedVerse ?? "nil")")
+                } else {
+                    // print("📚 No verse found")
+                }
+                
+                // Extract pali
+                if let paliMatch = try NSRegularExpression(pattern: paliPattern, options: [])
+                    .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
+                   let paliRange = Range(paliMatch.range(at: 1), in: text) {
+                    parsedPali = String(text[paliRange])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .replacingOccurrences(of: "\n", with: " ")
+                        .components(separatedBy: .whitespacesAndNewlines)
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " ")
+                    print("📚 Parsed pali: \(parsedPali ?? "nil")")
+                } else {
+                    print("📚 No pali found")
+                }
+                
+                // Extract translation
+                if let translationMatch = try NSRegularExpression(pattern: translationPattern, options: [])
+                    .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
+                   let translationRange = Range(translationMatch.range(at: 1), in: text) {
+                    parsedTranslation = String(text[translationRange])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .replacingOccurrences(of: "\n", with: " ")
+                        .components(separatedBy: .whitespacesAndNewlines)
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " ")
+                    // print("📚 Parsed translation: \(parsedTranslation ?? "nil")")
+                } else {
+                    print("📚 No translation found")
+                }
+            } catch {
+                print("❌ Citation parsing error: \(error)")
+            }
+            
+            // Assign final values
+            verse = parsedVerse
+            pali = parsedPali
+            translation = parsedTranslation
+        }
+        
+        var isValid: Bool {
+            verse != nil && (pali != nil || translation != nil)
         }
     }
     
@@ -50,9 +101,19 @@ private struct CitationBlock: View {
                 // Header with verse reference and buttons
                 if let verse = citationContent.verse {
                     HStack {
-                        Text(verse)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text(verse)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            Text("Buddha")
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.9))
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                .foregroundStyle(.secondary)
+                        }
                         
                         Spacer()
                         
@@ -68,9 +129,14 @@ private struct CitationBlock: View {
                             }
                             .buttonStyle(.plain)
                             .padding(.trailing, 8)
+                            .accessibilityLabel(showPali ? "Hide Pali text" : "Show Pali text")
                         }
                         
                         Button {
+                            // Cancel any existing timer
+                            copyTimer?.cancel()
+                            copyTimer = nil
+                            
                             // Copy formatted text
                             let textToCopy = [
                                 citationContent.verse.map { "[\($0)]" },
@@ -84,18 +150,22 @@ private struct CitationBlock: View {
                             withAnimation {
                                 showCopied = true
                             }
-                            // Hide the copied indicator after 2 seconds
-                            Task { @MainActor in
+                            
+                            // Start new timer
+                            copyTimer = Task { @MainActor in
                                 try? await Task.sleep(for: .seconds(2))
+                                guard !Task.isCancelled else { return }
                                 withAnimation {
                                     showCopied = false
                                 }
+                                copyTimer = nil
                             }
                         } label: {
                             Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                                 .foregroundStyle(showCopied ? .green : .secondary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(showCopied ? "Copied" : "Copy citation")
                     }
                 }
                 
@@ -106,6 +176,7 @@ private struct CitationBlock: View {
                             .italic()
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
@@ -113,15 +184,20 @@ private struct CitationBlock: View {
                         Text(translation)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.95))
+            .background(colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.97))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(.vertical, 8)
+        .onDisappear {
+            copyTimer?.cancel()
+            copyTimer = nil
+        }
     }
 }
 
@@ -163,6 +239,8 @@ private struct MarkdownText: View {
             if trimmedLine.isEmpty {
                 if !inCodeBlock && !inCitationBlock {
                     result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0))
+                } else if inCitationBlock {
+                    currentBlock += "\n"
                 }
                 continue
             }
@@ -176,22 +254,20 @@ private struct MarkdownText: View {
             // Handle citation blocks
             if trimmedLine == "<citation>" {
                 inCitationBlock = true
-                currentBlock = ""
+                currentBlock = trimmedLine
                 continue
             } else if trimmedLine == "</citation>" {
-                if !currentBlock.isEmpty {
+                if inCitationBlock {
+                    currentBlock += "\n" + trimmedLine
                     result.append(Line(content: currentBlock, type: .citation, index: index, indentLevel: 0))
                     currentBlock = ""
+                    inCitationBlock = false
                 }
-                inCitationBlock = false
                 continue
             }
             
             if inCitationBlock {
-                if !currentBlock.isEmpty {
-                    currentBlock += "\n"
-                }
-                currentBlock += line
+                currentBlock += "\n" + line
                 continue
             }
             
@@ -244,7 +320,37 @@ private struct MarkdownText: View {
         
         // Add any remaining code block
         if !currentBlock.isEmpty {
-            result.append(Line(content: currentBlock, type: .code, index: lineArray.count, indentLevel: 0))
+            result.append(Line(content: currentBlock, type: inCodeBlock ? .code : .citation, index: lineArray.count, indentLevel: 0))
+        }
+        
+        return result
+    }
+    
+    private func formatText(_ text: String) -> Text {
+        var result = Text("")
+        var currentIndex = text.startIndex
+        
+        while currentIndex < text.endIndex {
+            if let asteriskRange = text[currentIndex...].range(of: "*"),
+               let endAsteriskRange = text[asteriskRange.upperBound...].range(of: "*") {
+                // Add text before the asterisk
+                if asteriskRange.lowerBound > currentIndex {
+                    result = result + Text(text[currentIndex..<asteriskRange.lowerBound])
+                }
+                
+                // Add italicized text with secondary color
+                let italicText = text[asteriskRange.upperBound..<endAsteriskRange.lowerBound]
+                result = result + Text(String(italicText))
+                    .italic()
+                    .foregroundStyle(.secondary)
+                
+                // Update current index to after the end asterisk
+                currentIndex = endAsteriskRange.upperBound
+            } else {
+                // Add remaining text
+                result = result + Text(text[currentIndex...])
+                break
+            }
         }
         
         return result
@@ -260,7 +366,7 @@ private struct MarkdownText: View {
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 12)
                 case .text:
-                    Text(line.content)
+                    formatText(line.content)
                         .padding(.vertical, 4)
                 case .emptyLine:
                     Spacer()
@@ -294,7 +400,7 @@ private struct MarkdownText: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text("-")
                             .foregroundStyle(.secondary)
-                        Text(line.content)
+                        formatText(line.content)
                             .padding(.leading, line.indentLevel > 0 ? CGFloat(line.indentLevel * 16) : 0)
                     }
                     .padding(.leading, shouldNest ? 16 : 0)
@@ -304,7 +410,7 @@ private struct MarkdownText: View {
                         Text("\(number).")
                             .foregroundStyle(.secondary)
                             .frame(width: 24, alignment: .trailing)
-                        Text(line.content)
+                        formatText(line.content)
                             .padding(.leading, line.indentLevel > 1 ? CGFloat((line.indentLevel - 1) * 16) : 0)
                     }
                     .padding(.leading, line.indentLevel > 0 ? 16 : 0)
@@ -339,6 +445,7 @@ private struct MarkdownText: View {
 struct ChatMessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Query private var settings: [Settings]
     
     let message: ChatMessage
     var onRetry: (() async -> Void)?
@@ -351,98 +458,114 @@ struct ChatMessageBubble: View {
     @State private var showEditConfirmation = false
     
     var body: some View {
-        HStack {
-            if message.role == "user" {
-                Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            // Show name labels above messages
+            if let firstName = settings.first?.firstName,
+               !firstName.isEmpty,
+               message.role == "user" {
+                Text(firstName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 16)
+                    .padding(.bottom, 2)
+            } else if message.role == "assistant" {
+                Text("Gotama")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 16)
+                    .padding(.bottom, 2)
             }
             
-            VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 8) {
-                if message.isThinking == true {
-                    ChatThinkingIndicator()
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                } else {
-                    MarkdownText(text: message.content)
-                        .textSelection(.enabled)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, message.role == "user" ? 12 : 16)
-                        .contextMenu(menuItems: {
-                            Button {
-                                UIPasteboard.general.string = message.content
-                            } label: {
-                                Label("Copy", systemImage: "doc.on.doc")
-                                    .font(.subheadline)
-                            }
-                            
-                            if message.role == "user" {
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    if message.isThinking == true {
+                        ChatThinkingIndicator()
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                    } else {
+                        MarkdownText(text: message.content)
+                            .textSelection(.enabled)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, message.role == "user" ? 12 : 16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contextMenu(menuItems: {
                                 Button {
-                                    editMessage()
+                                    UIPasteboard.general.string = message.content
                                 } label: {
-                                    Label("Edit", systemImage: "pencil")
+                                    Label("Copy", systemImage: "doc.on.doc")
+                                        .font(.subheadline)
                                 }
                                 
-                                Button(role: .destructive) {
-                                    deleteMessageAndFollowing()
+                                if message.role == "user" {
+                                    Button {
+                                        editMessage()
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        deleteMessageAndFollowing()
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            })
+                        
+                        if showConfirmation {
+                            HStack(spacing: 12) {
+                                Button {
+                                    messageText = "Yes"
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Text("Yes")
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.accent)
+                                        .foregroundColor(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                }
+                                
+                                Button {
+                                    messageText = "No"
+                                } label: {
+                                    Text("No")
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.systemGray5))
+                                        .foregroundColor(.primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
                                 }
                             }
-                        })
+                            .padding(.top, 4)
+                        }
+                    }
                     
-                    if showConfirmation {
-                        HStack(spacing: 12) {
-                            Button {
-                                messageText = "Yes"
-                            } label: {
-                                Text("Yes")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color.accent)
-                                    .foregroundColor(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
+                    if showError, let error = message.error {
+                        HStack(spacing: 8) {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             
-                            Button {
-                                messageText = "No"
-                            } label: {
-                                Text("No")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color(.systemGray5))
-                                    .foregroundColor(.primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            if let onRetry {
+                                Button {
+                                    Task {
+                                        await onRetry()
+                                    }
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.borderless)
                             }
                         }
                         .padding(.top, 4)
                     }
                 }
+                .background(message.role == "user" ? (colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.93)) : nil)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
                 
-                if showError, let error = message.error {
-                    HStack(spacing: 8) {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        if let onRetry {
-                            Button {
-                                Task {
-                                    await onRetry()
-                                }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                    .padding(.top, 4)
+                if message.role == "assistant" {
+                    Spacer()
                 }
-            }
-            .background(message.role == "user" ? (colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.93)) : nil)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            
-            if message.role == "assistant" {
-                Spacer()
             }
         }
         .alert("Edit Message", isPresented: $showEditConfirmation) {

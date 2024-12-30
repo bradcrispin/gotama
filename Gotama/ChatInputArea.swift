@@ -151,10 +151,10 @@ struct ChatInputArea: View {
                             guard !isFocused else { return }
                             Task { @MainActor in
                                 try? await Task.sleep(for: .nanoseconds(1))  // Minimal delay to ensure view is ready
-                                print("⌨️ Setting focus after tap")
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    isFocused = true
-                                }
+                                // print("⌨️ Setting focus after tap")
+                                // withAnimation(.easeOut(duration: 0.2)) {
+                                isFocused = true
+                                // }
                             }
                         }
                 )
@@ -169,7 +169,7 @@ struct ChatInputArea: View {
                             colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
                         }
                         .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                            .init(topLeading: 36, bottomLeading: 0, bottomTrailing: 0, topTrailing: 36)))
+                            .init(topLeading: 24, bottomLeading: 0, bottomTrailing: 0, topTrailing: 24)))
                         
                         Group {
                             colorScheme == .dark ? Color(white: 0.23) : Color(.systemGray4)
@@ -184,7 +184,7 @@ struct ChatInputArea: View {
                             Color.accent
                                 .opacity(0.8)
                                 .clipShape(UnevenRoundedRectangle(cornerRadii: 
-                                    .init(topLeading: 36, bottomLeading: 0, bottomTrailing: 0, topTrailing: 36)))
+                                    .init(topLeading: 24, bottomLeading: 0, bottomTrailing: 0, topTrailing: 24)))
                             
                             Color.accent
                                 .opacity(0.8)
