@@ -431,17 +431,12 @@ struct ChatView: View {
                     viewOpacity = 1.0
                 }
             } else if !isFirstLaunch || onboardingViewModel == nil {  // Handle both non-first launch and regular chat creation
-                // Reset opacity if we haven't animated yet
-                if !hasAppliedInitialAnimation {
-                    viewOpacity = 0.0
-                }
+                // Set opacity immediately to 1.0 for new chats
+                viewOpacity = 1.0
+                hasAppliedInitialAnimation = true
                 
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(0.1))  // Minimal delay for non-first launch
-                    withAnimation(.easeInOut(duration: 1.7)) {
-                        viewOpacity = 1.0
-                        hasAppliedInitialAnimation = true
-                    }
                     
                     if let viewModel = onboardingViewModel {
                         startAsteriskAnimation()
