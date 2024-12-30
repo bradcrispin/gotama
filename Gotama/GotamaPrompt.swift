@@ -29,7 +29,7 @@ struct GotamaPrompt {
         var components: [String] = []
         
         // Get Gotama's profile
-        var basePromptText = "You are a hyper intelligent AI assistant named Gotama."
+        var basePromptText = ""
         var profile: GotamaProfile?
         if let context = modelContext {
             do {

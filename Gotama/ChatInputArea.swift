@@ -71,7 +71,7 @@ struct ChatInputArea: View {
                 print("🫳 Haptic engine stopped: \(reason)")
             }
             
-            print("🫳 Haptic engine initialized successfully")
+            // print("🫳 Haptic engine initialized successfully")
         } catch {
             print("🫳 Failed to create haptic engine: \(error)")
         }
@@ -213,7 +213,7 @@ struct ChatInputArea: View {
         .onAppear {
             feedbackGenerator = UINotificationFeedbackGenerator()
             feedbackGenerator?.prepare()
-            print("🫳 Haptic generator initialized and prepared")
+            // print("🫳 Haptic generator initialized and prepared")
             prepareHaptics()
         }
     }

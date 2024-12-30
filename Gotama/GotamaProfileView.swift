@@ -21,7 +21,7 @@ struct GotamaProfileView: View {
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
-    private let maxSystemPromptLength = 2000
+    private let maxSystemPromptLength = 4200
     
     // Model options with display names and descriptions
     private struct ModelOption: Identifiable {
@@ -103,7 +103,7 @@ struct GotamaProfileView: View {
                     
                     Section {
                         TextEditor(text: $systemPrompt)
-                            .frame(minHeight: 100)
+                            .frame(minHeight: 420)
                             .onChange(of: systemPrompt) {
                                 if systemPrompt.count > maxSystemPromptLength {
                                     systemPrompt = String(systemPrompt.prefix(maxSystemPromptLength))

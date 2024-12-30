@@ -49,12 +49,12 @@ struct ChatEmptyState: View {
                 )
                 .matchedGeometryEffect(id: "asterisk", in: animation)
                 .onAppear { 
-                    print("ChatEmptyState: Starting animation")
+                    // print("ChatEmptyState: Starting animation")
                     isAnimating = true 
                 }
                 .onTapGesture {
                     isAnimating.toggle()
-                    print("ChatEmptyState: Tap detected - Animation state: \(isAnimating)")
+                    // print("ChatEmptyState: Tap detected - Animation state: \(isAnimating)")
                 }
                 .opacity(isAnimating ? 1.0 : 0.6) // Visual feedback for paused state
                 .contentShape(Rectangle()) // Ensures the entire area is tappable
