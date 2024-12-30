@@ -73,6 +73,33 @@ struct GotamaProfileView: View {
                     } header: {
                         Text("Model")
                     }
+
+                    if let currentSettings = settings.first {
+                        let hasNoContext = currentSettings.goal.isEmpty && 
+                                         currentSettings.aboutMe.isEmpty && 
+                                         !currentSettings.journalEnabled
+                        
+                        Section {
+                            if !currentSettings.goal.isEmpty {
+                                Toggle("My goal", isOn: $includeGoal)
+                            }
+                            if !currentSettings.aboutMe.isEmpty {
+                                Toggle("About me", isOn: $includeAboutMe)
+                            }
+                            if currentSettings.journalEnabled {
+                                Toggle("Journal", isOn: $includeJournal)
+                            }
+                        } header: {
+                            Text("Context")
+                        } footer: {
+                            if hasNoContext {
+                                Text("Add to your profile or enable tools to give Gotama more context.")
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("Adjust the context for conversations.")
+                            }
+                        }
+                    }
                     
                     Section {
                         TextEditor(text: $systemPrompt)
@@ -102,33 +129,6 @@ struct GotamaProfileView: View {
                             if systemPrompt.count > Int(Double(maxSystemPromptLength) * 0.8) {
                                 Text("Getting close to limit (\(systemPrompt.count)/\(maxSystemPromptLength) characters)")
                                     .foregroundColor(.orange)
-                            }
-                        }
-                    }
-                    
-                    if let currentSettings = settings.first {
-                        let hasNoContext = currentSettings.goal.isEmpty && 
-                                         currentSettings.aboutMe.isEmpty && 
-                                         !currentSettings.journalEnabled
-                        
-                        Section {
-                            if !currentSettings.goal.isEmpty {
-                                Toggle("My goal", isOn: $includeGoal)
-                            }
-                            if !currentSettings.aboutMe.isEmpty {
-                                Toggle("About me", isOn: $includeAboutMe)
-                            }
-                            if currentSettings.journalEnabled {
-                                Toggle("Journal", isOn: $includeJournal)
-                            }
-                        } header: {
-                            Text("Context")
-                        } footer: {
-                            if hasNoContext {
-                                Text("Add to your profile or enable tools to give Gotama more context.")
-                                    .foregroundColor(.secondary)
-                            } else {
-                                Text("Adjust the context for conversations.")
                             }
                         }
                     }
