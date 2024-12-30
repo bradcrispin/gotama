@@ -3,6 +3,7 @@ import SwiftData
 
 @MainActor
 struct GotamaPrompt {
+    // MARK: - Base Prompt
     private static let basePrompt = """
     You are Gotama, an AI mindfulness teacher who guides others with direct, concise wisdom focused on inner peace and freedom from attachment. Your responses should embody the following characteristics:
 
@@ -73,17 +74,37 @@ struct GotamaPrompt {
     2. Address the root cause of suffering rather than surface issues
     3. Give practical guidance for letting go
     4. Use relevant metaphors to illustrate points
-    5. Quote from the reference text when appropriate
-    6. Maintain emotional distance while showing compassion
-    7. Keep responses focused and brief
-
+    5. Maintain emotional distance while showing compassion
+    6. Keep responses focused and brief
+    7. Do not use numbered lists. Use bullet points sparingly.
+    """
+    
+    // MARK: - Prompt Without Reference Text
+    private static let promptWithoutReferenceText = """
     Your responses should reflect the same tone, brevity, and focus on practical liberation.
 
     You do not incorporate external assumptions about Buddhism or other spiritual traditions.
 
     Remember that your purpose is to guide others toward inner peace through letting go of attachments, not to engage in philosophical debates or establish doctrinal positions. Your responses should always emphasize practical application over theoretical understanding.
     """
+
+    // MARK: - Prompt With Reference Text
+    private static let promptWithReferenceText = """
+    You should cite the following early words of the Buddha from the Atthakavagga using direct quotes to support your guidance when relevant. 
     
+    Your responses should reflect the same tone, brevity, and focus on practical liberation.
+
+    You have full access to the early words of the Buddha below and you should maintain strict fidelity to its content, style, and teachings without incorporating external assumptions about Buddhism or other spiritual traditions.
+    
+    <early words of the Buddha from the Atthakavagga>
+    %@
+    </early words of the Buddha from the Atthakavagga>
+
+    Remember that your purpose is to guide others toward inner peace through letting go of attachments, not to engage in philosophical debates or establish doctrinal positions. Your responses should always emphasize practical application over theoretical understanding.
+    """
+
+    // MARK: - User Information
+
     private static let userInfo = """
     - My name is %@.
     """
@@ -102,64 +123,93 @@ struct GotamaPrompt {
     %@
     """
     
-    static func buildPrompt(settings: Settings?, modelContext: ModelContext? = nil) -> String {
+    static func buildPrompt(settings: Settings? = nil, modelContext: ModelContext? = nil) -> String {
         var components: [String] = []
-        
-        // Get Gotama's profile
-        var profile: GotamaProfile?
-        if let context = modelContext {
-            do {
-                profile = try GotamaProfile.getOrCreate(modelContext: context)
-            } catch {
-                print("❌ Error getting Gotama profile: \(error)")
-            }
-        }
         
         // Add base prompt
         components.append(String(format: basePrompt))
+        print("📝 Added base prompt")
         
-        // Add user information if available
-        if let settings = settings {
-            if !settings.firstName.isEmpty {
-                components.append(String(format: userInfo, settings.firstName))
-            }
-            
-            if let profile = profile {
-                // Only include information if explicitly allowed in profile
-                if profile.includeGoal && !settings.goal.isEmpty {
-                    components.append(String(format: goalInfo, settings.goal))
-                }
-
-                if profile.includeAboutMe && !settings.aboutMe.isEmpty {
-                    components.append(String(format: aboutMeInfo, settings.aboutMe))
-                }
-                
-                // Add journal entries if enabled and allowed
-                if profile.includeJournal && settings.journalEnabled, let context = modelContext {
-                    let descriptor = FetchDescriptor<JournalEntry>(sortBy: [SortDescriptor(\JournalEntry.updatedAt, order: .reverse)])
-                    if let entries = try? context.fetch(descriptor) {
-                        var journalText = ""
-                        var totalLength = 0
-                        let maxLength = 1000
-                        
-                        for entry in entries {
-                            let entryText = "- \(entry.text)\n"
-                            if totalLength + entryText.count > maxLength {
-                                // If adding this entry would exceed limit, stop
-                                break
-                            }
-                            journalText += entryText
-                            totalLength += entryText.count
-                        }
-                        
-                        if !journalText.isEmpty {
-                            components.append(String(format: journalInfo, journalText))
-                        }
-                    }
-                }
-            }
+        // If no context provided, return base prompt with default instructions
+        guard let context = modelContext else {
+            print("⚠️ No ModelContext provided - using default instructions")
+            components.append(promptWithoutReferenceText)
+            return components.joined(separator: "\n\n")
         }
         
+        // Get singletons
+        do {
+            let profile = try GotamaProfile.getOrCreate(modelContext: context)
+            let userSettings = try Settings.getOrCreate(modelContext: context)
+            print("✅ Got profile - selectedText: \(profile.selectedText)")
+            print("✅ Got settings - firstName: \(userSettings.firstName)")
+            
+            // Add reference text or default instructions
+            if let selectedText = AncientText(rawValue: profile.selectedText) {
+                print("📊 Selected text: \(selectedText.rawValue)")
+                if selectedText != .none {
+                    print("📚 Adding reference text for: \(selectedText.rawValue)")
+                    components.append(String(format: promptWithReferenceText, selectedText.content))
+                } else {
+                    print("📝 Adding default instructions (no reference text)")
+                    components.append(promptWithoutReferenceText)
+                }
+            } else {
+                print("⚠️ Invalid selected text value: \(profile.selectedText)")
+            }
+            
+            // Add user information
+            if !userSettings.firstName.isEmpty {
+                print("👤 Adding user name: \(userSettings.firstName)")
+                components.append(String(format: userInfo, userSettings.firstName))
+            }
+
+            // Only include information if explicitly allowed in profile
+            if profile.includeGoal && !userSettings.goal.isEmpty {
+                print("🎯 Adding goal")
+                components.append(String(format: goalInfo, userSettings.goal))
+            }
+
+            if profile.includeAboutMe && !userSettings.aboutMe.isEmpty {
+                print("ℹ️ Adding about me")
+                components.append(String(format: aboutMeInfo, userSettings.aboutMe))
+            }
+            
+            // Add journal entries if enabled and allowed
+            if profile.includeJournal && userSettings.journalEnabled {
+                print("📔 Journal is enabled and allowed")
+                let descriptor = FetchDescriptor<JournalEntry>(sortBy: [SortDescriptor(\JournalEntry.updatedAt, order: .reverse)])
+                if let entries = try? context.fetch(descriptor) {
+                    print("📔 Found \(entries.count) journal entries")
+                    var journalText = ""
+                    var totalLength = 0
+                    let maxLength = 1000
+                    
+                    for entry in entries {
+                        let entryText = "- \(entry.text)\n"
+                        if totalLength + entryText.count > maxLength {
+                            // If adding this entry would exceed limit, stop
+                            break
+                        }
+                        journalText += entryText
+                        totalLength += entryText.count
+                    }
+                    
+                    if !journalText.isEmpty {
+                        print("📔 Adding journal text")
+                        components.append(String(format: journalInfo, journalText))
+                    }
+                } else {
+                    print("⚠️ Could not fetch journal entries")
+                }
+            }
+            
+        } catch {
+            print("❌ Error getting profile or settings: \(error)")
+            components.append(promptWithoutReferenceText)
+        }
+        
+        print("🔥 Final component count: \(components.count)")
         let prompt = components.joined(separator: "\n\n")
         print("🔥 System prompt: \(prompt)")
         

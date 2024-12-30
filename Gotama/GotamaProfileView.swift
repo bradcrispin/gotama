@@ -9,6 +9,7 @@ struct GotamaProfileView: View {
     @State private var profile: GotamaProfile?
     @State private var model: String = GotamaProfile.defaultModel
     @State private var hasLoaded = false
+    @State private var selectedText = AncientText.none
     
     // Information inclusion controls
     @State private var includeGoal: Bool = true
@@ -98,6 +99,34 @@ struct GotamaProfileView: View {
                             }
                         }
                     }
+
+                    Section {
+                        ForEach(AncientText.allCases) { text in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(text.rawValue)
+                                        .font(.body)
+                                    Text(text.description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if selectedText == text {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                softHaptics.impactOccurred()
+                                selectedText = text
+                            }
+                        }
+                    } header: {
+                        Text("Ancient Texts")
+                    } footer: {
+                        Text("Select a text for Gotama to reference in responses.")
+                    }
                 }
             }
             .navigationTitle("Gotama")
@@ -134,8 +163,9 @@ struct GotamaProfileView: View {
             self.includeGoal = loadedProfile.includeGoal
             self.includeAboutMe = loadedProfile.includeAboutMe
             self.includeJournal = loadedProfile.includeJournal
+            self.selectedText = AncientText(rawValue: loadedProfile.selectedText) ?? .none
             self.hasLoaded = true
-            print("✅ Loaded profile - Model: \(loadedProfile.model)")
+            print("✅ Loaded profile - Model: \(loadedProfile.model), Text: \(loadedProfile.selectedText)")
         } catch {
             print("❌ Error loading profile: \(error)")
         }
@@ -148,6 +178,7 @@ struct GotamaProfileView: View {
         print("Include Goal: \(includeGoal)")
         print("Include About Me: \(includeAboutMe)")
         print("Include Journal: \(includeJournal)")
+        print("Selected Text: \(selectedText.rawValue)")
         
         do {
             let profileToUpdate = try GotamaProfile.getOrCreate(modelContext: modelContext)
@@ -155,6 +186,7 @@ struct GotamaProfileView: View {
             profileToUpdate.includeGoal = includeGoal
             profileToUpdate.includeAboutMe = includeAboutMe
             profileToUpdate.includeJournal = includeJournal
+            profileToUpdate.selectedText = selectedText.rawValue
             try modelContext.save()
             print("✅ Updated profile")
         } catch {

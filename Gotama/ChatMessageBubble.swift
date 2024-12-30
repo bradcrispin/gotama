@@ -18,6 +18,7 @@ private struct MarkdownText: View {
             case code
             case unorderedList
             case orderedList(number: String)
+            case styleIndicator
         }
     }
     
@@ -37,6 +38,12 @@ private struct MarkdownText: View {
                 if !inCodeBlock {
                     result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0))
                 }
+                continue
+            }
+            
+            // Check for style indicators at the start of the message
+            if index == 0 && trimmedLine.hasPrefix("*") && trimmedLine.hasSuffix("*") {
+                result.append(Line(content: trimmedLine, type: .styleIndicator, index: index, indentLevel: 0))
                 continue
             }
             
@@ -74,7 +81,6 @@ private struct MarkdownText: View {
             } else if let firstWord = trimmedLine.components(separatedBy: .whitespaces).first,
                       firstWord.hasSuffix("."),
                       firstWord.dropLast().allSatisfy({ $0.isNumber }) {
-                // Preserve the original number without the dot
                 let number = String(firstWord.dropLast())
                 result.append(Line(
                     content: String(trimmedLine.dropFirst(firstWord.count + 1)),
@@ -96,15 +102,20 @@ private struct MarkdownText: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(zip(lines.indices, lines)), id: \.1.id) { index, line in
                 switch line.type {
+                case .styleIndicator:
+                    Text(String(line.content.dropFirst().dropLast()))
+                        .italic()
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 12)
                 case .text:
                     Text(line.content)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 4)
                 case .emptyLine:
                     Spacer()
-                        .frame(height: 12)
+                        .frame(height: 16)
                 case .code:
                     Text(line.content)
                         .font(.system(.body, design: .monospaced))
@@ -112,9 +123,8 @@ private struct MarkdownText: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(.systemGray6))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 8)
                 case .unorderedList:
-                    // Find the last numbered list item and its indentation
                     let lastNumberedIndex = (0..<index).reversed().first { i in
                         if case .orderedList = lines[i].type {
                             return true
@@ -123,8 +133,6 @@ private struct MarkdownText: View {
                     }
                     
                     let shouldNest = lastNumberedIndex.map { lastIndex in
-                        // Stay nested if we're at same or greater indent than the numbered item
-                        // and haven't gone back to a lower indent level
                         let numberedIndent = lines[lastIndex].indentLevel
                         let hasStayedNested = (lastIndex..<index).allSatisfy { i in
                             lines[i].indentLevel >= numberedIndent
@@ -136,25 +144,21 @@ private struct MarkdownText: View {
                         Text("-")
                             .foregroundStyle(.secondary)
                         Text(line.content)
-                            // Add padding for wrapped lines
                             .padding(.leading, line.indentLevel > 0 ? CGFloat(line.indentLevel * 16) : 0)
                     }
-                    // Only add left padding for nested items
                     .padding(.leading, shouldNest ? 16 : 0)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 4)
                 case .orderedList(let number):
                     HStack(alignment: .top, spacing: 8) {
                         Text("\(number).")
                             .foregroundStyle(.secondary)
                             .frame(width: 24, alignment: .trailing)
                         Text(line.content)
-                            // Add padding only for wrapped lines and nested items
                             .padding(.leading, line.indentLevel > 1 ? CGFloat((line.indentLevel - 1) * 16) : 0)
                     }
-                    // Remove base indentation, only indent if nested
                     .padding(.leading, line.indentLevel > 0 ? 16 : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 4)
                 }
             }
         }

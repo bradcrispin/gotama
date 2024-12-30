@@ -13,6 +13,9 @@ final class GotamaProfile {
     var includeAboutMe: Bool
     var includeJournal: Bool
     
+    /// Selected ancient text for reference
+    var selectedText: String
+    
     /// Default values for the profile
     static let defaultModel = "claude-3-5-sonnet-20241022"
     
@@ -25,6 +28,7 @@ final class GotamaProfile {
         self.includeGoal = true
         self.includeAboutMe = true
         self.includeJournal = true
+        self.selectedText = AncientText.none.rawValue
     }
     
     /// Helper method to ensure single GotamaProfile instance

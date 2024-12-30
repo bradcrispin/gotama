@@ -44,22 +44,22 @@ actor AnthropicClient {
         
         // Get model context and profile from the first message's chat if available
         let (model, systemPrompt) = await MainActor.run {
-            // Get default model from GotamaProfile
-            var model = GotamaProfile.defaultModel
-            var systemPrompt = GotamaPrompt.buildPrompt(settings: settings, modelContext: nil)
+            // Get context from chat or settings
+            let context = previousMessages.first?.chat?.modelContext ?? settings?.modelContext
             
-            // Try to get profile from context
-            if let context = previousMessages.first?.chat?.modelContext {
-                do {
-                    let profile = try GotamaProfile.getOrCreate(modelContext: context)
-                    model = profile.model
-                    systemPrompt = GotamaPrompt.buildPrompt(settings: settings, modelContext: context)
-                } catch {
-                    print("❌ Error getting Gotama profile: \(error)")
+            // Get profile and build prompt
+            do {
+                guard let context = context else {
+                    print("⚠️ No ModelContext available")
+                    return (GotamaProfile.defaultModel, GotamaPrompt.buildPrompt())
                 }
+                
+                let profile = try GotamaProfile.getOrCreate(modelContext: context)
+                return (profile.model, GotamaPrompt.buildPrompt(settings: settings, modelContext: context))
+            } catch {
+                print("❌ Error getting Gotama profile: \(error)")
+                return (GotamaProfile.defaultModel, GotamaPrompt.buildPrompt())
             }
-            
-            return (model, systemPrompt)
         }
         
         let body: [String: Any] = [
