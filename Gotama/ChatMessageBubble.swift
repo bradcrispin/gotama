@@ -308,11 +308,11 @@ struct ChatMessageBubble: View {
     }
     
     private func editMessage() {
-        print("✏️ Starting message edit")
+        // print("✏️ Starting message edit")
         
         // Set the message text for editing
         messageText = message.content
-        print("📝 Loaded message text for editing: \(messageText)")
+        // print("📝 Loaded message text for editing: \(messageText)")
         
         // Check if this is the first message and update chat title
         if let chat = message.chat,

@@ -110,8 +110,8 @@ struct ChatInputArea: View {
                         .foregroundColor(isRecording ? .white : (messageText.isEmpty ? (colorScheme == .dark ? .white : .gray) : .primary))
                         .textFieldStyle(.plain)
                         .onChange(of: messageText) { oldValue, newValue in
-                            print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
-                            print("🎤 Recording state: \(isRecording), isTextFromRecognition: \(isTextFromRecognition)")
+                            // print("💬 Message text changed: '\(oldValue)' -> '\(newValue)'")
+                            // print("🎤 Recording state: \(isRecording), isTextFromRecognition: \(isTextFromRecognition)")
                             
                             // Only stop dictation if text was manually changed (not from recognition)
                             if isRecording && !isTextFromRecognition {

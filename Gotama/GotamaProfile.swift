@@ -8,9 +8,6 @@ final class GotamaProfile {
     /// The model to use for chat completions
     var model: String
     
-    /// The system prompt that defines Gotama's personality
-    var systemPrompt: String
-    
     /// Controls for what information to include in the system prompt
     var includeGoal: Bool
     var includeAboutMe: Bool
@@ -18,16 +15,13 @@ final class GotamaProfile {
     
     /// Default values for the profile
     static let defaultModel = "claude-3-5-sonnet-20241022"
-    static let defaultSystemPrompt = "You are a hyper intelligent AI assistant named Gotama. You are a master of the English language."
     
     /// Singleton instance tracking
     private static var instance: GotamaProfile?
     
     /// Private initializer to enforce singleton pattern through getOrCreate
-    fileprivate init(model: String = defaultModel,
-         systemPrompt: String = defaultSystemPrompt) {
+    fileprivate init(model: String) {
         self.model = model
-        self.systemPrompt = systemPrompt
         self.includeGoal = true
         self.includeAboutMe = true
         self.includeJournal = true
@@ -70,7 +64,7 @@ final class GotamaProfile {
         
         // Create new profile if none exists
         print("✨ Creating new Gotama profile")
-        let newProfile = GotamaProfile()
+        let newProfile = GotamaProfile(model: defaultModel)
         modelContext.insert(newProfile)
         try modelContext.save()
         
@@ -86,7 +80,6 @@ final class GotamaProfile {
     static func resetToDefault(modelContext: ModelContext) throws {
         let profile = try getOrCreate(modelContext: modelContext)
         profile.model = defaultModel
-        profile.systemPrompt = defaultSystemPrompt
         try modelContext.save()
         print("🔄 Reset Gotama profile to defaults")
     }

@@ -8,7 +8,6 @@ struct GotamaProfileView: View {
     // Track the profile directly
     @State private var profile: GotamaProfile?
     @State private var model: String = GotamaProfile.defaultModel
-    @State private var systemPrompt: String = GotamaProfile.defaultSystemPrompt
     @State private var hasLoaded = false
     
     // Information inclusion controls
@@ -21,7 +20,6 @@ struct GotamaProfileView: View {
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
-    private let maxSystemPromptLength = 4200
     
     // Model options with display names and descriptions
     private struct ModelOption: Identifiable {
@@ -100,38 +98,6 @@ struct GotamaProfileView: View {
                             }
                         }
                     }
-                    
-                    Section {
-                        TextEditor(text: $systemPrompt)
-                            .frame(minHeight: 420)
-                            .onChange(of: systemPrompt) {
-                                if systemPrompt.count > maxSystemPromptLength {
-                                    systemPrompt = String(systemPrompt.prefix(maxSystemPromptLength))
-                                }
-                            }
-                    } header: {
-                        HStack {
-                            Text("System Prompt")
-                            Spacer()
-                            if systemPrompt != GotamaProfile.defaultSystemPrompt {
-                                Button {
-                                    softHaptics.impactOccurred()
-                                    systemPrompt = GotamaProfile.defaultSystemPrompt
-                                } label: {
-                                    Image(systemName: "arrow.counterclockwise")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    } footer: {
-                        Group {
-                            if systemPrompt.count > Int(Double(maxSystemPromptLength) * 0.8) {
-                                Text("Getting close to limit (\(systemPrompt.count)/\(maxSystemPromptLength) characters)")
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                    }
                 }
             }
             .navigationTitle("Gotama")
@@ -165,7 +131,6 @@ struct GotamaProfileView: View {
             let loadedProfile = try GotamaProfile.getOrCreate(modelContext: modelContext)
             self.profile = loadedProfile
             self.model = loadedProfile.model
-            self.systemPrompt = loadedProfile.systemPrompt
             self.includeGoal = loadedProfile.includeGoal
             self.includeAboutMe = loadedProfile.includeAboutMe
             self.includeJournal = loadedProfile.includeJournal
@@ -180,7 +145,6 @@ struct GotamaProfileView: View {
     private func saveProfile() {
         print("💾 Saving Gotama profile...")
         print("Model: \(model)")
-        print("System Prompt length: \(systemPrompt.count)")
         print("Include Goal: \(includeGoal)")
         print("Include About Me: \(includeAboutMe)")
         print("Include Journal: \(includeJournal)")
@@ -188,7 +152,6 @@ struct GotamaProfileView: View {
         do {
             let profileToUpdate = try GotamaProfile.getOrCreate(modelContext: modelContext)
             profileToUpdate.model = model
-            profileToUpdate.systemPrompt = systemPrompt
             profileToUpdate.includeGoal = includeGoal
             profileToUpdate.includeAboutMe = includeAboutMe
             profileToUpdate.includeJournal = includeJournal

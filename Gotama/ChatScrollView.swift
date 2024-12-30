@@ -46,7 +46,7 @@ struct ChatScrollView: View {
                             showConfirmation: false
                         )
                         .id(message.id)
-                        .transition(.opacity.combined(with: .scale))
+                        .transition(.opacity)
                     }
                 }
                 .padding()
