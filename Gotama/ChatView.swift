@@ -246,7 +246,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let error = errorMessage {
-                ChatErrorBanner(message: error) {
+                ChatErrorBanner(message: error, onTap: error.contains("API key") || error.contains("microphone") || error.contains("speech recognition") ? {
                     if error.contains("API key") {
                         showSettings = true
                     } else if error.contains("microphone") || error.contains("speech recognition") {
@@ -254,7 +254,10 @@ struct ChatView: View {
                             UIApplication.shared.open(settingsUrl)
                         }
                     }
-                }
+                } : {
+                    // Clear error message for non-link errors
+                    errorMessage = nil
+                })
             }
             
             // Content area with opacity animation

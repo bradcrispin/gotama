@@ -21,8 +21,9 @@ struct ChatErrorBanner: View {
     // MARK: - Properties
     /// The error message to display
     let message: String
-    /// Callback executed when the banner is tapped
-    var onTap: () -> Void
+    /// Optional callback executed when the banner is tapped
+    /// If nil, the banner will be dismissible
+    var onTap: (() -> Void)?
     
     // MARK: - Environment
     @Environment(\.colorScheme) private var colorScheme
@@ -37,6 +38,13 @@ struct ChatErrorBanner: View {
                 .foregroundStyle(colorScheme == .dark ? .secondary : .secondary)
             
             Spacer()
+            
+            // Show chevron only for linked errors
+            if onTap != nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .background(colorScheme == .dark ? Color(white: 0.1) : Color(.systemGray6))
@@ -44,10 +52,20 @@ struct ChatErrorBanner: View {
         .padding(.horizontal)
         .padding(.top)
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .onTapGesture {
+            if let action = onTap {
+                action()
+            }
+        }
     }
 }
 
 #Preview {
-    ChatErrorBanner(message: "An error occurred", onTap: {})
+    VStack(spacing: 20) {
+        // Preview linked error
+        ChatErrorBanner(message: "Tap to open settings", onTap: {})
+        
+        // Preview dismissible error
+        ChatErrorBanner(message: "Network error occurred", onTap: nil)
+    }
 } 
