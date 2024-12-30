@@ -1,6 +1,130 @@
 import SwiftUI
 import SwiftData
 
+/// A view that displays a citation block with a copy button
+private struct CitationBlock: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let content: String
+    @State private var showCopied = false
+    @State private var showPali = false
+    
+    private struct CitationContent {
+        let verse: String?
+        let pali: String?
+        let translation: String?
+        
+        init(from text: String) {
+            // Extract verse
+            verse = text.components(separatedBy: "<verse>")
+                .dropFirst()
+                .first?
+                .components(separatedBy: "</verse>")
+                .first?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Extract pali
+            pali = text.components(separatedBy: "<pali>")
+                .dropFirst()
+                .first?
+                .components(separatedBy: "</pali>")
+                .first?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Extract translation
+            translation = text.components(separatedBy: "<translation>")
+                .dropFirst()
+                .first?
+                .components(separatedBy: "</translation>")
+                .first?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+    
+    private var citationContent: CitationContent {
+        CitationContent(from: content)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header with verse reference and buttons
+                if let verse = citationContent.verse {
+                    HStack {
+                        Text(verse)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        // Only show magnifying glass if Pali text exists
+                        if citationContent.pali != nil {
+                            Button {
+                                withAnimation(.spring(duration: 0.3)) {
+                                    showPali.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showPali ? "text.magnifyingglass" : "magnifyingglass")
+                                    .foregroundStyle(showPali ? .accent : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 8)
+                        }
+                        
+                        Button {
+                            // Copy formatted text
+                            let textToCopy = [
+                                citationContent.verse.map { "[\($0)]" },
+                                showPali ? citationContent.pali : nil,
+                                citationContent.translation
+                            ]
+                                .compactMap { $0 }
+                                .joined(separator: "\n\n")
+                            
+                            UIPasteboard.general.string = textToCopy
+                            withAnimation {
+                                showCopied = true
+                            }
+                            // Hide the copied indicator after 2 seconds
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .seconds(2))
+                                withAnimation {
+                                    showCopied = false
+                                }
+                            }
+                        } label: {
+                            Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                                .foregroundStyle(showCopied ? .green : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                // Citation content
+                VStack(alignment: .leading, spacing: 16) {
+                    if showPali, let pali = citationContent.pali {
+                        Text(pali)
+                            .italic()
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    
+                    if let translation = citationContent.translation {
+                        Text(translation)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.95))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.vertical, 8)
+    }
+}
+
 /// A view that renders markdown text with support for code blocks and lists
 private struct MarkdownText: View {
     let text: String
@@ -16,6 +140,7 @@ private struct MarkdownText: View {
             case text
             case emptyLine
             case code
+            case citation
             case unorderedList
             case orderedList(number: String)
             case styleIndicator
@@ -25,7 +150,8 @@ private struct MarkdownText: View {
     private var lines: [Line] {
         var result: [Line] = []
         var inCodeBlock = false
-        var currentCode = ""
+        var inCitationBlock = false
+        var currentBlock = ""
         
         let lineArray = text.components(separatedBy: .newlines)
         
@@ -35,7 +161,7 @@ private struct MarkdownText: View {
             
             // Handle empty lines
             if trimmedLine.isEmpty {
-                if !inCodeBlock {
+                if !inCodeBlock && !inCitationBlock {
                     result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0))
                 }
                 continue
@@ -47,12 +173,35 @@ private struct MarkdownText: View {
                 continue
             }
             
+            // Handle citation blocks
+            if trimmedLine == "<citation>" {
+                inCitationBlock = true
+                currentBlock = ""
+                continue
+            } else if trimmedLine == "</citation>" {
+                if !currentBlock.isEmpty {
+                    result.append(Line(content: currentBlock, type: .citation, index: index, indentLevel: 0))
+                    currentBlock = ""
+                }
+                inCitationBlock = false
+                continue
+            }
+            
+            if inCitationBlock {
+                if !currentBlock.isEmpty {
+                    currentBlock += "\n"
+                }
+                currentBlock += line
+                continue
+            }
+            
+            // Handle code blocks
             if trimmedLine.hasPrefix("```") {
                 if inCodeBlock {
                     // End code block
-                    if !currentCode.isEmpty {
-                        result.append(Line(content: currentCode, type: .code, index: index, indentLevel: 0))
-                        currentCode = ""
+                    if !currentBlock.isEmpty {
+                        result.append(Line(content: currentBlock, type: .code, index: index, indentLevel: 0))
+                        currentBlock = ""
                     }
                     inCodeBlock = false
                 } else {
@@ -63,10 +212,10 @@ private struct MarkdownText: View {
             }
             
             if inCodeBlock {
-                if !currentCode.isEmpty {
-                    currentCode += "\n"
+                if !currentBlock.isEmpty {
+                    currentBlock += "\n"
                 }
-                currentCode += line
+                currentBlock += line
                 continue
             }
             
@@ -94,8 +243,8 @@ private struct MarkdownText: View {
         }
         
         // Add any remaining code block
-        if !currentCode.isEmpty {
-            result.append(Line(content: currentCode, type: .code, index: lineArray.count, indentLevel: 0))
+        if !currentBlock.isEmpty {
+            result.append(Line(content: currentBlock, type: .code, index: lineArray.count, indentLevel: 0))
         }
         
         return result
@@ -124,6 +273,8 @@ private struct MarkdownText: View {
                         .background(Color(.systemGray6))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .padding(.vertical, 8)
+                case .citation:
+                    CitationBlock(content: line.content)
                 case .unorderedList:
                     let lastNumberedIndex = (0..<index).reversed().first { i in
                         if case .orderedList = lines[i].type {
@@ -220,6 +371,7 @@ struct ChatMessageBubble: View {
                                 UIPasteboard.general.string = message.content
                             } label: {
                                 Label("Copy", systemImage: "doc.on.doc")
+                                    .font(.subheadline)
                             }
                             
                             if message.role == "user" {

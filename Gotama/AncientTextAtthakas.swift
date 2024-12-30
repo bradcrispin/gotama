@@ -5,6 +5,8 @@ enum AncientTextAtthakas {
     /// This is stored separately from the main AncientText enum for better code organization
     static var content: String {
         return """
+    <verse>Snp 4.2</verse>
+    <pali>
     Satto guhāyaṁ bahunābhichanno,
     Tiṭṭhaṁ naro mohanasmiṁ pagāḷho;
     Dūre vivekā hi tathāvidho so,
@@ -46,8 +48,10 @@ enum AncientTextAtthakas {
     Nāsīsatī lokamimaṁ parañcāti. Variant: Nāsīsatī → nāsiṁsatī (bj); nāsiṁsati (sya-all, pts-vp-pli1)
 
     Guhaṭṭhakasuttaṁ dutiyaṁ.
+    </pali>
 
-
+    <verse>Snp 4.3</verse>
+    <pali>
     Vadanti ve duṭṭhamanāpi eke,
     Athopi ve saccamanā vadanti;
     Vādañca jātaṁ muni no upeti,
@@ -89,7 +93,10 @@ enum AncientTextAtthakas {
     Adhosi so diṭṭhimidheva sabbanti.
 
     Duṭṭhaṭṭhakasuttaṁ tatiyaṁ.
+    </pali>
 
+    <verse>Snp 4.4</verse>
+    <pali>
 
     Passāmi suddhaṁ paramaṁ arogaṁ,
     Diṭṭhena saṁsuddhi narassa hoti;
@@ -127,12 +134,15 @@ enum AncientTextAtthakas {
     Āsaṁ na kubbanti kuhiñci loke.
 
     Sīmātigo brāhmaṇo tassa natthi,
-    Ñatvā va disvā va samuggahītaṁ; Variant: Ñatvā va disvā va → ñatvā ca disvā ca (si, mr)
+    Ñatvā va disvā va samuggahītaṁ; 
     Na rāgarāgī na virāgaratto,
     Tassīdha natthi paramuggahītanti.
 
     Suddhaṭṭhakasuttaṁ catutthaṁ.
+    </pali>
 
+    <verse>Snp 4.5</verse>
+    <pali>
 
     Paramanti diṭṭhīsu paribbasāno,
     Yaduttari kurute jantu loke;
@@ -175,6 +185,7 @@ enum AncientTextAtthakas {
     Pāraṅgato na pacceti tādīti.
 
     Paramaṭṭhakasuttaṁ pañcamaṁ.
+    </pali>
     """
     }
 } 
