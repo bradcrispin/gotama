@@ -149,6 +149,9 @@ struct ChatView: View {
                 let stream = try await anthropic.sendMessage(trimmedText, settings: settings.first, previousMessages: previousMessages)
                 
                 let startTime = Date()
+                var inCitationBlock = false
+                var citationBuffer = ""
+                
                 for try await text in stream {
                     chunkCount += 1
                     if chunkCount == 1 {
@@ -168,10 +171,38 @@ struct ChatView: View {
                         }
                     }
                     
-                    try await Task.sleep(nanoseconds: 20_000_000) // 20ms delay
+                    // Handle citation blocks
+                    if text.contains("<citation>") || inCitationBlock {
+                        if !inCitationBlock {
+                            print("📚 Starting citation block")
+                            inCitationBlock = true
+                            citationBuffer = text
+                        } else {
+                            print("📚 Buffering citation chunk: \(text)")
+                            citationBuffer += text
+                            // Check for complete closing tag or partial closing tag
+                            if text.contains("</citation>") || 
+                               (citationBuffer.contains("</citation") && text.contains(">")) {
+                                print("📚 Completing citation block")
+                                inCitationBlock = false
+                                print("📚 Citation content: \(citationBuffer)")
+                                // Add a small delay before showing the complete citation block
+                                try await Task.sleep(for: .milliseconds(50))
+                                await MainActor.run {
+                                    print("📚 Adding citation to message content")
+                                    assistantMessage.content += citationBuffer
+                                    citationBuffer = "" // Clear the buffer after using it
+                                }
+                            }
+                        }
+                        continue
+                    }
+                    
+                    // Add delay for non-citation text
+                    try await Task.sleep(for: .milliseconds(15))
                     
                     await MainActor.run {
-                        // let beforeLength = assistantMessage.content.count
+                        print("📝 Adding regular text: \(text)")
                         assistantMessage.content += text
                         
                         // Provide subtle haptic feedback every few chunks
@@ -185,8 +216,6 @@ struct ChatView: View {
                                 proxy.scrollTo(userMessage.id, anchor: .top)
                             }
                         }
-                        
-                        // print("📝 Updated content length: \(beforeLength) -> \(assistantMessage.content.count)")
                     }
                 }
                 
@@ -218,29 +247,32 @@ struct ChatView: View {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
         
-        // Cancel the current task
-        currentTask?.cancel()
-        currentTask = nil
-        
-        // Remove the last two messages without animation
-        if let existingChat = chat {
-            let messages = existingChat.messages
-            if messages.count >= 2,
-               messages[messages.count - 1].role == "assistant",
-               messages[messages.count - 2].role == "user" {
-                withAnimation(nil) { // Disable animation
-                    existingChat.messages.removeLast(2)
+        Task { @MainActor in
+            // Cancel the current task
+            currentTask?.cancel()
+            currentTask = nil
+            
+            // Batch all state updates together
+            withAnimation(.easeOut(duration: 0.2)) {
+                // Remove the last two messages without animation
+                if let existingChat = chat {
+                    let messages = existingChat.messages
+                    if messages.count >= 2,
+                       messages[messages.count - 1].role == "assistant",
+                       messages[messages.count - 2].role == "user" {
+                        existingChat.messages.removeLast(2)
+                    }
                 }
+                
+                // Restore the message text
+                if let pendingText = pendingMessageText {
+                    messageText = pendingText
+                    pendingMessageText = nil
+                }
+                
+                isLoading = false
             }
         }
-        
-        // Restore the message text
-        if let pendingText = pendingMessageText {
-            messageText = pendingText
-            pendingMessageText = nil
-        }
-        
-        isLoading = false
     }
     
     var body: some View {
@@ -533,6 +565,9 @@ struct ChatView: View {
         
         do {
             var responseText = ""
+            var inCitationBlock = false
+            var citationBuffer = ""
+            
             print("🔄 Retrying message stream...")
             let previousMessages = Array(chat?.messages.prefix(while: { $0 !== message }) ?? [])
             print("📨 Retrying with \(previousMessages.count) previous messages:")
@@ -544,7 +579,40 @@ struct ChatView: View {
             
             for try await text in stream {
                 print("📥 Retry chunk: \(text)")
+                
+                // Handle citation blocks
+                if text.contains("<citation>") || inCitationBlock {
+                    if !inCitationBlock {
+                        print("📚 Starting citation block (retry)")
+                        inCitationBlock = true
+                        citationBuffer = text
+                    } else {
+                        print("📚 Buffering citation chunk (retry): \(text)")
+                        citationBuffer += text
+                        // Check for complete closing tag or partial closing tag
+                        if text.contains("</citation>") || 
+                           (citationBuffer.contains("</citation") && text.contains(">")) {
+                            print("📚 Completing citation block (retry)")
+                            inCitationBlock = false
+                            print("📚 Citation content (retry): \(citationBuffer)")
+                            // Add a small delay before showing the complete citation block
+                            try await Task.sleep(for: .milliseconds(50))
+                            await MainActor.run {
+                                print("📚 Adding citation to message content (retry)")
+                                responseText += citationBuffer
+                                message.content = responseText
+                                citationBuffer = "" // Clear the buffer after using it
+                            }
+                        }
+                    }
+                    continue
+                }
+                
+                // Add delay for non-citation text
+                try await Task.sleep(for: .milliseconds(15))
+                
                 await MainActor.run {
+                    print("📝 Adding regular text (retry): \(text)")
                     responseText += text
                     message.content = responseText
                 }

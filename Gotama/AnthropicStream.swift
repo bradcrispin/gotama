@@ -9,6 +9,8 @@ actor AnthropicStream: AsyncSequence {
     private let request: URLRequest
     private var buffer = ""
     private var isCancelled = false
+    private var citationBuffer = ""
+    private var inCitationBlock = false
     
     init(request: URLRequest, urlSession: URLSession = .shared) {
         self.request = request
@@ -66,6 +68,20 @@ actor AnthropicStream: AsyncSequence {
                 
                 // Extract text from delta
                 if let text = response.delta?.text {
+                    // Check for citation block markers
+                    if text.contains("<citation>") {
+                        inCitationBlock = true
+                        citationBuffer = text
+                        continue
+                    } else if text.contains("</citation>") {
+                        inCitationBlock = false
+                        citationBuffer += text
+                        return citationBuffer
+                    } else if inCitationBlock {
+                        citationBuffer += text
+                        continue
+                    }
+                    
                     return text
                 }
             } catch {
