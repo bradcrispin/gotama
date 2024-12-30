@@ -115,13 +115,8 @@ struct ChatInputArea: View {
                             
                             // Only stop dictation if text was manually changed (not from recognition)
                             if isRecording && !isTextFromRecognition {
-                                // Add a small delay to ensure we don't stop dictation prematurely
-                                Task { @MainActor in
-                                    try? await Task.sleep(for: .nanoseconds(100_000_000)) // 100ms delay
-                                    // Double check if we're still recording and it wasn't from recognition
-                                    if isRecording && !isTextFromRecognition {
-                                        onStopDictation()
-                                    }
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    onStopDictation()
                                 }
                             }
                         }
@@ -201,10 +196,12 @@ struct ChatInputArea: View {
                 }
                 .onChange(of: isRecording) { wasRecording, isNowRecording in
                     print("🎙️ Recording state changed: \(wasRecording) -> \(isNowRecording)")
-                    // Prepare generator for next use when recording stops
-                    if !isNowRecording {
-                        print("🫳 Preparing haptic for next use")
-                        feedbackGenerator?.prepare()
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        // Prepare generator for next use when recording stops
+                        if !isNowRecording {
+                            print("🫳 Preparing haptic for next use")
+                            feedbackGenerator?.prepare()
+                        }
                     }
                 }
             }

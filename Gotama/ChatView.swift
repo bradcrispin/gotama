@@ -597,12 +597,11 @@ struct ChatView: View {
     
     private func stopDictation() {
         Task { @MainActor in
-            dictationHandler.stopDictation()
-            softHaptics.impactOccurred()
-            
-            // Reset flag after a short delay
-            try? await Task.sleep(for: .milliseconds(300))
-            isTextFromRecognition = false
+            withAnimation(.easeOut(duration: 0.2)) {
+                dictationHandler.stopDictation()
+                softHaptics.impactOccurred()
+                isTextFromRecognition = false
+            }
         }
     }
     

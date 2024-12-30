@@ -136,8 +136,11 @@ private struct MarkdownText: View {
                         Text("-")
                             .foregroundStyle(.secondary)
                         Text(line.content)
+                            // Add padding for wrapped lines
+                            .padding(.leading, line.indentLevel > 0 ? CGFloat(line.indentLevel * 16) : 0)
                     }
-                    .padding(.leading, CGFloat(shouldNest ? 16 : line.indentLevel * 16))
+                    // Only add left padding for nested items
+                    .padding(.leading, shouldNest ? 16 : 0)
                     .padding(.vertical, 2)
                 case .orderedList(let number):
                     HStack(alignment: .top, spacing: 8) {
@@ -145,7 +148,11 @@ private struct MarkdownText: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 24, alignment: .trailing)
                         Text(line.content)
+                            // Add padding only for wrapped lines and nested items
+                            .padding(.leading, line.indentLevel > 1 ? CGFloat((line.indentLevel - 1) * 16) : 0)
                     }
+                    // Remove base indentation, only indent if nested
+                    .padding(.leading, line.indentLevel > 0 ? 16 : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 2)
                 }
