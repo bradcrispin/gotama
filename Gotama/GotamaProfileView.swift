@@ -36,42 +36,17 @@ struct GotamaProfileView: View {
             displayName: "Claude Sonnet 3.6",
             description: "Most intelligent model"
         ),
-        ModelOption(
-            apiName: "claude-3-5-haiku-latest",
-            displayName: "Claude Haiku 3.5",
-            description: "Best for daily use"
-        )
+        // ModelOption(
+        //     apiName: "claude-3-5-haiku-latest",
+        //     displayName: "Claude Haiku 3.5",
+        //     description: "Best for daily use"
+        // )
     ]
     
     var body: some View {
         NavigationStack {
             Form {
                 if hasLoaded {
-                    Section {
-                        ForEach(modelOptions) { option in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(option.displayName)
-                                        .font(.body)
-                                    Text(option.description)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if model == option.apiName {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                softHaptics.impactOccurred()
-                                model = option.apiName
-                            }
-                        }
-                    } header: {
-                        Text("Model")
-                    }
 
                     if let currentSettings = settings.first {
                         let hasNoContext = currentSettings.goal.isEmpty && 
@@ -127,6 +102,32 @@ struct GotamaProfileView: View {
                     } footer: {
                         Text("Select a text for Gotama to reference in responses.")
                     }
+                
+                    // Section {
+                    //     ForEach(modelOptions) { option in
+                    //         HStack {
+                    //             VStack(alignment: .leading, spacing: 4) {
+                    //                 Text(option.displayName)
+                    //                     .font(.body)
+                    //                 Text(option.description)
+                    //                     .font(.caption)
+                    //                     .foregroundColor(.secondary)
+                    //             }
+                    //             Spacer()
+                    //             if model == option.apiName {
+                    //                 Image(systemName: "checkmark")
+                    //                     .foregroundColor(.accentColor)
+                    //             }
+                    //         }
+                    //         .contentShape(Rectangle())
+                    //         .onTapGesture {
+                    //             softHaptics.impactOccurred()
+                    //             model = option.apiName
+                    //         }
+                    //     }
+                    // } header: {
+                    //     Text("Model")
+                    // }
                 }
             }
             .navigationTitle("Gotama")
