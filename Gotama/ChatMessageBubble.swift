@@ -23,6 +23,18 @@ private struct CitationBlock: View {
         let pali: String?
         let translation: String?
         
+        /// Formats text by adding line breaks before capital letters
+        private static func formatWithLineBreaks(_ text: String) -> String {
+            // Add a line break before any capital letter (except the first character)
+            let pattern = "(?<!^)(?=[A-ZĀĪŪṀṄṆṆṚṜḌḤḲḶṂṄṆṚṜṢṬ])"
+            return text.replacingOccurrences(
+                of: pattern,
+                with: "\n\n",
+                options: [.regularExpression]
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
         init(from text: String) {
             print("📚 Parsing citation from text: \(text)")
             
@@ -42,39 +54,33 @@ private struct CitationBlock: View {
                     .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
                    let verseRange = Range(verseMatch.range(at: 1), in: text) {
                     parsedVerse = String(text[verseRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    // print("📚 Parsed verse: \(parsedVerse ?? "nil")")
-                } else {
-                    // print("📚 No verse found")
                 }
                 
                 // Extract pali
                 if let paliMatch = try NSRegularExpression(pattern: paliPattern, options: [])
                     .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
                    let paliRange = Range(paliMatch.range(at: 1), in: text) {
-                    parsedPali = String(text[paliRange])
+                    let rawPali = String(text[paliRange])
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                         .replacingOccurrences(of: "\n", with: " ")
                         .components(separatedBy: .whitespacesAndNewlines)
                         .filter { !$0.isEmpty }
                         .joined(separator: " ")
+                    parsedPali = Self.formatWithLineBreaks(rawPali)
                     print("📚 Parsed pali: \(parsedPali ?? "nil")")
-                } else {
-                    print("📚 No pali found")
                 }
                 
                 // Extract translation
                 if let translationMatch = try NSRegularExpression(pattern: translationPattern, options: [])
                     .firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
                    let translationRange = Range(translationMatch.range(at: 1), in: text) {
-                    parsedTranslation = String(text[translationRange])
+                    let rawTranslation = String(text[translationRange])
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                         .replacingOccurrences(of: "\n", with: " ")
                         .components(separatedBy: .whitespacesAndNewlines)
                         .filter { !$0.isEmpty }
                         .joined(separator: " ")
-                    // print("📚 Parsed translation: \(parsedTranslation ?? "nil")")
-                } else {
-                    print("📚 No translation found")
+                    parsedTranslation = Self.formatWithLineBreaks(rawTranslation)
                 }
             } catch {
                 print("❌ Citation parsing error: \(error)")
@@ -96,8 +102,8 @@ private struct CitationBlock: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 // Header with verse reference and buttons
                 if let verse = citationContent.verse {
                     HStack {
@@ -106,7 +112,7 @@ private struct CitationBlock: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             
-                            Text("Buddha")
+                            Text("Atthakavagga")
                                 .font(.caption)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -173,22 +179,32 @@ private struct CitationBlock: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if showPali, let pali = citationContent.pali {
                         Text(pali)
+                            .font(.subheadline)
                             .italic()
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .transition(.move(edge: .top).combined(with: .opacity))
+                            .padding(.bottom, 8)
+                        
+                        // Subtle separator
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.2))
+                            .frame(height: 0.5)
+                            .padding(.bottom, 8)
                     }
                     
                     if let translation = citationContent.translation {
                         Text(translation)
+                            .font(.subheadline)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .padding(.top, 8)
             }
-            .padding(12)
+            .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.97))
             .clipShape(RoundedRectangle(cornerRadius: 8))
