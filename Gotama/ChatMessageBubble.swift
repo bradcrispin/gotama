@@ -437,18 +437,9 @@ private struct PauseBlock: View {
                             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         }
                     } label: {
-                        VStack(spacing: 8) {
-                            Text(formattedDuration)
-                                .font(.system(.title2, design: .rounded))
-                                .foregroundStyle(.secondary)
-                            
-                            Text("begin meditation")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 140, height: 80)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.accent)
                     }
                     .buttonStyle(.plain)
                 } else {
