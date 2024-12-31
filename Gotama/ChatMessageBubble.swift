@@ -1,5 +1,136 @@
 import SwiftUI
 import SwiftData
+import AudioToolbox
+import AVFoundation
+
+/// A custom bell sound player that creates a more meditation-appropriate sound
+private class BellPlayer: ObservableObject {
+    private var audioEngine: AVAudioEngine
+    private var playerNode: AVAudioPlayerNode
+    private var timeEffect: AVAudioUnitTimePitch
+    private var reverbEffect: AVAudioUnitReverb
+    private var fadeTimer: Timer?
+    
+    // Audio enhancement parameters
+    private let bellDuration: TimeInterval = 30.0  // Total duration
+    private let attackTime: TimeInterval = 0.05    // Quick initial strike
+    private let peakTime: TimeInterval = 0.2      // Time to reach peak after attack
+    private let initialDecayTime: TimeInterval = 2.0  // Initial decay phase
+    private let longDecayTime: TimeInterval = 27.75   // Long, gentle decay phase
+    private let updateInterval: TimeInterval = 0.05   // 50ms updates for smooth fade
+    
+    init() {
+        audioEngine = AVAudioEngine()
+        playerNode = AVAudioPlayerNode()
+        timeEffect = AVAudioUnitTimePitch()
+        reverbEffect = AVAudioUnitReverb()
+        
+        // Setup audio chain
+        audioEngine.attach(playerNode)
+        audioEngine.attach(timeEffect)
+        audioEngine.attach(reverbEffect)
+        
+        // Connect nodes
+        audioEngine.connect(playerNode, to: timeEffect, format: nil)
+        audioEngine.connect(timeEffect, to: reverbEffect, format: nil)
+        audioEngine.connect(reverbEffect, to: audioEngine.mainMixerNode, format: nil)
+        
+        // Configure effects for rich bell sound
+        timeEffect.pitch = -300  // Slightly lower pitch for depth
+        reverbEffect.loadFactoryPreset(.largeChamber)
+        reverbEffect.wetDryMix = 70  // More reverb for longer sustain
+        
+        // Start engine
+        do {
+            try audioEngine.start()
+            print("🔔 Bell audio engine started")
+        } catch {
+            print("❌ Failed to start audio engine: \(error)")
+        }
+    }
+    
+    func playBell() {
+        guard let url = Bundle.main.url(forResource: "bell", withExtension: "caf") else {
+            print("❌ Bell sound file not found, falling back to system sound")
+            AudioServicesPlaySystemSound(1013)
+            return
+        }
+        
+        do {
+            let file = try AVAudioFile(forReading: url)
+            let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))
+            try file.read(into: buffer!)
+            
+            // Reset player and timer
+            playerNode.stop()
+            fadeTimer?.invalidate()
+            
+            // Set initial volume to 0
+            playerNode.volume = 0
+            
+            // Schedule buffer with looping for sustained sound
+            playerNode.scheduleBuffer(buffer!, at: nil, options: .loops)
+            
+            // Start playing
+            playerNode.play()
+            
+            var elapsedTime: TimeInterval = 0
+            fadeTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] timer in
+                guard let self = self else {
+                    timer.invalidate()
+                    return
+                }
+                
+                elapsedTime += updateInterval
+                
+                if elapsedTime >= bellDuration {
+                    // End of sound
+                    self.playerNode.stop()
+                    timer.invalidate()
+                    return
+                }
+                
+                // Calculate volume using a natural bell envelope
+                let volume = self.calculateBellVolume(at: elapsedTime)
+                
+                // Apply volume with smooth easing
+                self.playerNode.volume = volume
+            }
+            
+            print("🔔 Playing meditation bell with 30-second envelope")
+        } catch {
+            print("❌ Failed to play bell sound: \(error), falling back to system sound")
+            AudioServicesPlaySystemSound(1013)
+        }
+    }
+    
+    /// Calculates the bell volume at a given time using a natural bell envelope curve
+    private func calculateBellVolume(at time: TimeInterval) -> Float {
+        if time < attackTime {
+            // Initial strike (quick rise)
+            return Float(time / attackTime)
+        } else if time < attackTime + peakTime {
+            // Peak resonance
+            return 1.0
+        } else if time < attackTime + peakTime + initialDecayTime {
+            // Initial decay phase (faster)
+            let decayProgress = (time - (attackTime + peakTime)) / initialDecayTime
+            return 1.0 - Float(decayProgress) * 0.3 // Decay to 0.7
+        } else {
+            // Long decay phase (exponential decay)
+            let decayProgress = (time - (attackTime + peakTime + initialDecayTime)) / longDecayTime
+            let base: Float = 0.7 // Start from where initial decay ended
+            let curve: Float = 3.0 // Adjust for smoother decay
+            return base * pow(1 - Float(decayProgress), curve)
+        }
+    }
+    
+    deinit {
+        fadeTimer?.invalidate()
+        audioEngine.stop()
+        print("🔔 Bell audio engine stopped")
+    }
+}
 
 /// A view that displays a citation block with a copy button
 /// 
@@ -224,11 +355,16 @@ private struct PauseBlock: View {
     let onComplete: () -> Void
     let onReset: (() -> Void)?
     let isFirstPause: Bool
+    let isLastPause: Bool
     
     @State private var timeRemaining: TimeInterval
     @State private var timer: Timer?
     @State private var state: TimerState
     @State private var completedDuration: TimeInterval = 0
+    @StateObject private var bellPlayer = BellPlayer()
+    
+    // System sound ID for transition
+    private let pauseRenderSound: SystemSoundID = 1104  // Gentle chime for transitions
     
     enum TimerState {
         case ready
@@ -236,13 +372,38 @@ private struct PauseBlock: View {
         case completed
     }
     
-    init(duration: TimeInterval, state: TimerState = .ready, isFirstPause: Bool = false, onComplete: @escaping () -> Void, onReset: (() -> Void)? = nil) {
+    // Helper function to play meditation sounds
+    private func playSound(_ type: SoundType) {
+        switch type {
+        case .bell:
+            print("🔔 Playing meditation bell")
+            bellPlayer.playBell()
+        case .transition:
+            print("🔔 Playing transition sound")
+            AudioServicesPlaySystemSound(pauseRenderSound)
+        }
+    }
+    
+    private enum SoundType {
+        case bell
+        case transition
+    }
+    
+    init(duration: TimeInterval, state: TimerState = .ready, isFirstPause: Bool = false, isLastPause: Bool = false, onComplete: @escaping () -> Void, onReset: (() -> Void)? = nil) {
+        print("🎯 Initializing PauseBlock - First: \(isFirstPause), Last: \(isLastPause)")
         self.duration = duration
         self.onComplete = onComplete
         self.onReset = onReset
         self.isFirstPause = isFirstPause
+        self.isLastPause = isLastPause
         self._timeRemaining = State(initialValue: duration)
         self._state = State(initialValue: state)
+        
+        // Play transition sound if this is a subsequent pause that auto-starts
+        if !isFirstPause && state == .ready {
+            print("🔄 Auto-start sound for subsequent pause")
+            AudioServicesPlaySystemSound(pauseRenderSound)
+        }
     }
     
     private var formattedTime: String {
@@ -268,63 +429,37 @@ private struct PauseBlock: View {
                 // Start button - only show for first pause
                 if isFirstPause {
                     Button {
+                        print("🎬 Starting first meditation pause")
                         withAnimation(.spring(duration: 0.3)) {
                             state = .active
                             startTimer()
+                            playSound(.bell)
                             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         }
                     } label: {
-                        ZStack {
-                            // Outer breathing circle
-                            Circle()
-                                .stroke(Color.accent.opacity(0.15), lineWidth: 1)
-                                .scaleAnimation(isActive: true, targetScale: 1.05, duration: 3.0)
+                        VStack(spacing: 8) {
+                            Text(formattedDuration)
+                                .font(.system(.title2, design: .rounded))
+                                .foregroundStyle(.secondary)
                             
-                            // Inner circle with gradient
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.accent.opacity(0.1),
-                                            Color.accent.opacity(0.05)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .padding(4)
-                            
-                            VStack(spacing: 12) {
-                                // Pause duration
-                                Text(formattedDuration)
-                                    .font(.system(.title3, design: .rounded))
-                                    .foregroundStyle(.secondary.opacity(0.8))
-                                    .padding(.top, 4)
-                                
-                                // Start meditation text
-                                Text("begin meditation")
-                                    .font(.system(.subheadline, design: .rounded))
-                                    .foregroundStyle(.secondary.opacity(0.7))
-                                
-                                // Subtle play indicator
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(.accent.opacity(0.8))
-                                    .padding(.vertical, 4)
-                            }
+                            Text("begin meditation")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(width: 140, height: 140)
-                        .contentShape(Circle())
+                        .frame(width: 140, height: 80)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                     .buttonStyle(.plain)
-                    .scaleAnimation(isActive: true, targetScale: 1.02, duration: 2.0)
                 } else {
                     // Auto-start for subsequent pauses
                     Color.clear
                         .onAppear {
+                            print("🔄 Auto-starting subsequent pause")
                             withAnimation(.spring(duration: 0.3)) {
                                 state = .active
                                 startTimer()
+                                playSound(.transition)
                                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                             }
                         }
@@ -338,27 +473,17 @@ private struct PauseBlock: View {
                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 } label: {
                     ZStack {
-                        // Outer ring
+                        // Progress ring
                         Circle()
-                            .stroke(Color.secondary.opacity(0.12), lineWidth: 2)
-                            .overlay {
-                                // Progress ring
-                                Circle()
-                                    .trim(from: 0, to: timeRemaining / duration)
-                                    .stroke(
-                                        Color.accent.opacity(0.9),
-                                        style: StrokeStyle(
-                                            lineWidth: 2,
-                                            lineCap: .round
-                                        )
-                                    )
-                                    .rotationEffect(.degrees(-90))
-                            }
-                        
-                        // Inner circle background
-                        Circle()
-                            .fill(Color.secondary.opacity(0.05))
-                            .padding(4)
+                            .trim(from: 0, to: timeRemaining / duration)
+                            .stroke(
+                                Color.accent.opacity(0.9),
+                                style: StrokeStyle(
+                                    lineWidth: 2,
+                                    lineCap: .round
+                                )
+                            )
+                            .rotationEffect(.degrees(-90))
                         
                         // Timer content
                         VStack(spacing: 6) {
@@ -370,7 +495,7 @@ private struct PauseBlock: View {
                             
                             Text("tap to continue")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundStyle(.secondary.opacity(0.8))
+                                .foregroundStyle(.secondary)
                                 .opacity(timeRemaining < duration * 0.95 ? 1 : 0)
                                 .animation(.easeInOut(duration: 0.5), value: timeRemaining)
                         }
@@ -379,7 +504,6 @@ private struct PauseBlock: View {
                     .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .scaleAnimation(isActive: true, targetScale: 1.02, duration: 2.0)
                 
             case .completed:
                 // Success state with duration and reset option
@@ -415,7 +539,7 @@ private struct PauseBlock: View {
                     
                     Spacer(minLength: 0)
                 }
-                .frame(height: 36)  // Even more compact
+                .frame(height: 36)
             }
         }
         .padding()
@@ -423,12 +547,14 @@ private struct PauseBlock: View {
         .background(colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.97))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onDisappear {
+            print("👋 PauseBlock disappearing")
             timer?.invalidate()
             timer = nil
         }
     }
     
     private func startTimer() {
+        print("⏱️ Starting timer for \(duration) seconds")
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 0.1
@@ -440,13 +566,22 @@ private struct PauseBlock: View {
     }
     
     private func completeTimer() {
+        print("✅ Completing timer")
         timer?.invalidate()
         timer = nil
         withAnimation(.spring(duration: 0.3)) {
             state = .completed
         }
+        
+        // Play completion bell for last pause
+        if isLastPause {
+            print("🔔 Playing final meditation bell")
+            playSound(.bell)
+        }
+        
         // Soft success haptic when timer completes
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        
         // Small delay to show completion state before continuing
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             onComplete()
@@ -762,50 +897,57 @@ private struct MarkdownText: View {
         let isFirstPause = pauseIndices.first == line.index
         let isLastPause = pauseIndices.last == line.index
         
+        print("🎯 Creating PauseBlock - First: \(isFirstPause), Last: \(isLastPause), Active: \(isActive)")
+        
         if isActive {
             let duration = extractPauseDuration(from: line.content)
-            return PauseBlock(duration: duration, isFirstPause: isFirstPause, onComplete: {
-                print("⏲️ Completed pause block at index: \(currentPauseIndex)")
-                hasActivePause = true
-                
-                // Move to next pause block or complete
-                if currentPauseIndex < pauseIndices.count - 1 {
-                    // Scroll to message using the same animation as message sending
-                    if let proxy = scrollProxy {
-                        withAnimation(.spring(duration: 0.3)) {
-                            proxy.scrollTo(messageId, anchor: .bottom)
-                        }
-                    }
+            return PauseBlock(
+                duration: duration,
+                isFirstPause: isFirstPause,
+                isLastPause: isLastPause,
+                onComplete: {
+                    print("⏲️ Completed pause block at index: \(currentPauseIndex)")
+                    hasActivePause = true
                     
-                    // Small delay to allow scroll to complete
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation(.easeInOut) {
-                            currentPauseIndex += 1
-                            hasActivePause = false
+                    // Move to next pause block or complete
+                    if currentPauseIndex < pauseIndices.count - 1 {
+                        // Scroll to message using the same animation as message sending
+                        if let proxy = scrollProxy {
+                            withAnimation(.spring(duration: 0.3)) {
+                                proxy.scrollTo(messageId, anchor: .bottom)
+                            }
                         }
-                    }
-                } else if isLastPause {
-                    // Final pause complete, trigger strong haptic and continue
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred(intensity: 1.0)
-                    
-                    // Ensure final scroll
-                    if let proxy = scrollProxy {
-                        withAnimation(.spring(duration: 0.3)) {
-                            proxy.scrollTo(messageId, anchor: .bottom)
+                        
+                        // Small delay to allow scroll to complete
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeInOut) {
+                                currentPauseIndex += 1
+                                hasActivePause = false
+                            }
                         }
-                    }
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    } else if isLastPause {
+                        // Final pause complete, trigger strong haptic and continue
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred(intensity: 1.0)
+                        
+                        // Ensure final scroll
+                        if let proxy = scrollProxy {
+                            withAnimation(.spring(duration: 0.3)) {
+                                proxy.scrollTo(messageId, anchor: .bottom)
+                            }
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            onPauseComplete?()
+                        }
+                    } else {
                         onPauseComplete?()
                     }
-                } else {
-                    onPauseComplete?()
+                }, onReset: {
+                    print("⏲️ Resetting pause block at index: \(currentPauseIndex)")
+                    // Reset to current pause block and hide subsequent text
+                    hasActivePause = false
                 }
-            }, onReset: {
-                print("⏲️ Resetting pause block at index: \(currentPauseIndex)")
-                // Reset to current pause block and hide subsequent text
-                hasActivePause = false
-            })
+            )
             .padding(.vertical, 24) // Consistent padding above and below
             .transition(.opacity.combined(with: .scale(scale: 0.95)).animation(.easeInOut(duration: 0.5).delay(3.0))) // Increased delay to 3 seconds
             .onAppear {
@@ -819,17 +961,22 @@ private struct MarkdownText: View {
                 }
             }
         } else {
-            // Show completed pause block with reset option
-            return PauseBlock(duration: extractPauseDuration(from: line.content), state: .completed, isFirstPause: isFirstPause, onComplete: {
-                // No-op since it's already completed
-            }, onReset: {
-                print("⏲️ Resetting from completed pause block at index: \(currentPauseIndex)")
-                // Reset to this pause block and hide subsequent text
-                withAnimation(.easeInOut) {
-                    currentPauseIndex = pauseIndices.firstIndex(of: line.index) ?? currentPauseIndex
-                    hasActivePause = false
+            return PauseBlock(
+                duration: extractPauseDuration(from: line.content),
+                state: .completed,
+                isFirstPause: isFirstPause,
+                isLastPause: isLastPause,
+                onComplete: {
+                    // No-op since it's already completed
+                }, onReset: {
+                    print("⏲️ Resetting from completed pause block at index: \(currentPauseIndex)")
+                    // Reset to this pause block and hide subsequent text
+                    withAnimation(.easeInOut) {
+                        currentPauseIndex = pauseIndices.firstIndex(of: line.index) ?? currentPauseIndex
+                        hasActivePause = false
+                    }
                 }
-            })
+            )
             .padding(.vertical, 24) // Consistent padding above and below
         }
     }
