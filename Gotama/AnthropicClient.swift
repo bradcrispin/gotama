@@ -66,7 +66,7 @@ actor AnthropicClient {
             "model": model,
             "system": systemPrompt,
             "messages": allMessages,
-            "max_tokens": 1024,
+            "max_tokens": 2048,
             "stream": true
         ]
         

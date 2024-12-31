@@ -43,7 +43,8 @@ struct ChatScrollView: View {
                             onRetry: message.error != nil ? { await onRetry(message) } : nil,
                             showError: true,
                             messageText: $messageText,
-                            showConfirmation: false
+                            showConfirmation: false,
+                            scrollProxy: proxy
                         )
                         .id(message.id)
                         .transition(.opacity)
