@@ -46,7 +46,60 @@ struct GotamaProfileView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if hasLoaded {
+                    // Section {
+                    //     ForEach(AncientText.allCases) { text in
+                    //         HStack {
+                    //             VStack(alignment: .leading, spacing: 4) {
+                    //                 Text(text.rawValue)
+                    //                     .font(.body)
+                    //                 Text(text.description)
+                    //                     .font(.caption)
+                    //                     .foregroundColor(.secondary)
+                    //             }
+                    //             Spacer()
+                    //             if selectedText == text {
+                    //                 Image(systemName: "checkmark")
+                    //                     .foregroundColor(.accentColor)
+                    //             }
+                    //         }
+                    //         .contentShape(Rectangle())
+                    //         .onTapGesture {
+                    //             softHaptics.impactOccurred()
+                    //             selectedText = text
+                    //         }
+                    //     }
+                    // } header: {
+                    //     Text("Ancient Texts")
+                    // } footer: {
+                    //     Text("Select a text for Gotama to reference in responses.")
+                    // }
+                
+                    Section {
+                        ForEach(modelOptions) { option in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(option.displayName)
+                                        .font(.body)
+                                    Text(option.description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if model == option.apiName {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                softHaptics.impactOccurred()
+                                model = option.apiName
+                            }
+                        }
+                    } header: {
+                        Text("Model")
+                    }
+                    if hasLoaded {
 
                     if let currentSettings = settings.first {
                         let hasNoContext = currentSettings.goal.isEmpty && 
@@ -74,60 +127,6 @@ struct GotamaProfileView: View {
                             }
                         }
                     }
-
-                    Section {
-                        ForEach(AncientText.allCases) { text in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(text.rawValue)
-                                        .font(.body)
-                                    Text(text.description)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if selectedText == text {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                softHaptics.impactOccurred()
-                                selectedText = text
-                            }
-                        }
-                    } header: {
-                        Text("Ancient Texts")
-                    } footer: {
-                        Text("Select a text for Gotama to reference in responses.")
-                    }
-                
-                    // Section {
-                    //     ForEach(modelOptions) { option in
-                    //         HStack {
-                    //             VStack(alignment: .leading, spacing: 4) {
-                    //                 Text(option.displayName)
-                    //                     .font(.body)
-                    //                 Text(option.description)
-                    //                     .font(.caption)
-                    //                     .foregroundColor(.secondary)
-                    //             }
-                    //             Spacer()
-                    //             if model == option.apiName {
-                    //                 Image(systemName: "checkmark")
-                    //                     .foregroundColor(.accentColor)
-                    //             }
-                    //         }
-                    //         .contentShape(Rectangle())
-                    //         .onTapGesture {
-                    //             softHaptics.impactOccurred()
-                    //             model = option.apiName
-                    //         }
-                    //     }
-                    // } header: {
-                    //     Text("Model")
-                    // }
                 }
             }
             .navigationTitle("Gotama")
