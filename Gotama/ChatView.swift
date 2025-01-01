@@ -178,7 +178,7 @@ struct ChatView: View {
                         try await Task.sleep(for: .milliseconds(15))
                         
                         await MainActor.run {
-                            print("📝 Adding text to message: \(text)")
+                            // print("📝 Adding text to message: \(text)")
                             assistantMessage.content += text
                             
                             // Provide subtle haptic feedback every few chunks

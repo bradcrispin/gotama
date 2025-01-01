@@ -116,7 +116,12 @@ struct ContentView: View {
                             Section {
                                 ForEach(entries) { entry in
                                     NavigationLink(value: JournalDestination.existing(entry)) {
-                                        JournalEntryRow(entry: entry)
+                                        Label {
+                                            JournalEntryRow(entry: entry)
+                                        } icon: {
+                                            Image(systemName: "text.book.closed")
+                                                .imageScale(.large)
+                                        }
                                     }
                                 }
                                 .onDelete(perform: deleteEntries)
@@ -236,9 +241,10 @@ struct ContentView: View {
                     HStack {
                         Spacer()
                         Button(action: createAndOpenNewChat) {
-                            Image(systemName: "plus.message.fill")
+                            Image(systemName: "asterisk")
                                 .font(.title2)
                                 .foregroundStyle(.white)
+                                .rotationEffect(.degrees(45))
                                 .frame(width: 56, height: 56)
                                 .background(.accent)
                                 .clipShape(Circle())

@@ -22,7 +22,7 @@ final class CitationHandler {
     ///   - shouldBuffer: Whether the text should be buffered (true if in citation block)
     ///   - processedText: The processed text if ready to be displayed, nil if buffering
     func handleStreamChunk(_ text: String) -> (shouldBuffer: Bool, processedText: String?) {
-        print("📚 Processing chunk for citations: \(text)")
+        // print("📚 Processing chunk for citations: \(text)")
         
         // Check if we're entering a citation block or already in one
         if text.contains("<citation>") || inCitationBlock {
