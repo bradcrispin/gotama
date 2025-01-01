@@ -6,7 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9A3C4A9C2D24BB710084DC60 /* bell-meditation-75335.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "bell-meditation-75335.mp3"; sourceTree = "<group>"; };
 		9A6937142D18EDF500C110AE /* Gotama.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gotama.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,6 +37,7 @@
 		9A69370B2D18EDF500C110AE = {
 			isa = PBXGroup;
 			children = (
+				9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */,
 				9A6937162D18EDF500C110AE /* Gotama */,
 				9A6937152D18EDF500C110AE /* Products */,
 			);
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9A3C4A9C2D24BB710084DC60 /* bell-meditation-75335.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

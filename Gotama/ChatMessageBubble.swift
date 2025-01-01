@@ -10,6 +10,7 @@ private class BellPlayer: ObservableObject {
     private var timeEffect: AVAudioUnitTimePitch
     private var reverbEffect: AVAudioUnitReverb
     private var fadeTimer: Timer?
+    private var audioFile: AVAudioFile?
     
     // Audio enhancement parameters
     private let bellDuration: TimeInterval = 30.0  // Total duration
@@ -18,6 +19,7 @@ private class BellPlayer: ObservableObject {
     private let initialDecayTime: TimeInterval = 2.0  // Initial decay phase
     private let longDecayTime: TimeInterval = 27.75   // Long, gentle decay phase
     private let updateInterval: TimeInterval = 0.05   // 50ms updates for smooth fade
+    private let quickFadeOutDuration: TimeInterval = 2.0 // Duration for quick fade out when skipped
     
     init() {
         audioEngine = AVAudioEngine()
@@ -30,15 +32,31 @@ private class BellPlayer: ObservableObject {
         audioEngine.attach(timeEffect)
         audioEngine.attach(reverbEffect)
         
-        // Connect nodes
-        audioEngine.connect(playerNode, to: timeEffect, format: nil)
-        audioEngine.connect(timeEffect, to: reverbEffect, format: nil)
-        audioEngine.connect(reverbEffect, to: audioEngine.mainMixerNode, format: nil)
-        
-        // Configure effects for rich bell sound
-        timeEffect.pitch = -300  // Slightly lower pitch for depth
-        reverbEffect.loadFactoryPreset(.largeChamber)
-        reverbEffect.wetDryMix = 70  // More reverb for longer sustain
+        // Load and prepare audio file
+        if let url = Bundle.main.url(forResource: "bell-meditation-75335", withExtension: "mp3") {
+            do {
+                audioFile = try AVAudioFile(forReading: url)
+                
+                // Configure the audio engine format based on the file
+                let format = audioFile!.processingFormat
+                
+                // Connect nodes with the correct format
+                audioEngine.connect(playerNode, to: timeEffect, format: format)
+                audioEngine.connect(timeEffect, to: reverbEffect, format: format)
+                audioEngine.connect(reverbEffect, to: audioEngine.mainMixerNode, format: format)
+                
+                // Configure effects for rich bell sound
+                timeEffect.pitch = -300  // Slightly lower pitch for depth
+                reverbEffect.loadFactoryPreset(.largeChamber)
+                reverbEffect.wetDryMix = 70  // More reverb for longer sustain
+                
+                print("🔔 Audio file loaded successfully")
+            } catch {
+                print("❌ Failed to load audio file: \(error)")
+            }
+        } else {
+            print("❌ Bell sound file not found")
+        }
         
         // Start engine
         do {
@@ -50,16 +68,15 @@ private class BellPlayer: ObservableObject {
     }
     
     func playBell() {
-        guard let url = Bundle.main.url(forResource: "bell", withExtension: "caf") else {
-            print("❌ Bell sound file not found, falling back to system sound")
+        guard let audioFile = audioFile else {
+            print("❌ No audio file loaded, falling back to system sound")
             AudioServicesPlaySystemSound(1013)
             return
         }
         
         do {
-            let file = try AVAudioFile(forReading: url)
-            let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))
-            try file.read(into: buffer!)
+            let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: AVAudioFrameCount(audioFile.length))
+            try audioFile.read(into: buffer!)
             
             // Reset player and timer
             playerNode.stop()
@@ -85,7 +102,7 @@ private class BellPlayer: ObservableObject {
                 
                 if elapsedTime >= bellDuration {
                     // End of sound
-                    self.playerNode.stop()
+                    self.fadeOutAndStop()
                     timer.invalidate()
                     return
                 }
@@ -101,6 +118,34 @@ private class BellPlayer: ObservableObject {
         } catch {
             print("❌ Failed to play bell sound: \(error), falling back to system sound")
             AudioServicesPlaySystemSound(1013)
+        }
+    }
+    
+    /// Fades out the bell sound quickly and stops playback
+    func fadeOutAndStop() {
+        fadeTimer?.invalidate()
+        
+        let startVolume = playerNode.volume
+        var elapsedTime: TimeInterval = 0
+        
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            elapsedTime += updateInterval
+            
+            if elapsedTime >= quickFadeOutDuration {
+                self.playerNode.stop()
+                timer.invalidate()
+                return
+            }
+            
+            // Linear fade out
+            let progress = elapsedTime / quickFadeOutDuration
+            let volume = startVolume * Float(1 - progress)
+            self.playerNode.volume = volume
         }
     }
     
@@ -464,35 +509,47 @@ private struct PauseBlock: View {
                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 } label: {
                     ZStack {
-                        // Progress ring
-                        Circle()
-                            .trim(from: 0, to: timeRemaining / duration)
-                            .stroke(
-                                Color.accent.opacity(0.9),
-                                style: StrokeStyle(
-                                    lineWidth: 2,
-                                    lineCap: .round
-                                )
-                            )
-                            .rotationEffect(.degrees(-90))
-                        
-                        // Timer content
-                        VStack(spacing: 6) {
-                            Text(formattedTime)
-                                .font(.system(size: 32, weight: .medium, design: .rounded))
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                                .foregroundStyle(.primary.opacity(0.9))
-                            
-                            Text("tap to continue")
-                                .font(.system(.caption, design: .rounded))
-                                .foregroundStyle(.secondary)
-                                .opacity(timeRemaining < duration * 0.95 ? 1 : 0)
-                                .animation(.easeInOut(duration: 0.5), value: timeRemaining)
+                        // Bell icon - only show for first or last pause
+                        if isFirstPause || isLastPause {
+                            HStack {
+                                Image(systemName: "bell.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.secondary.opacity(0.6))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 24)
+                            .zIndex(0)
                         }
+                        
+                        // Center timer
+                        ZStack {
+                            // Progress ring
+                            Circle()
+                                .trim(from: 0, to: timeRemaining / duration)
+                                .stroke(
+                                    Color.accent.opacity(0.9),
+                                    style: StrokeStyle(
+                                        lineWidth: 2,
+                                        lineCap: .round
+                                    )
+                                )
+                                .rotationEffect(.degrees(-90))
+                            
+                            // Timer content
+                            VStack(spacing: 6) {
+                                Text(formattedTime)
+                                    .font(.system(size: 32, weight: .medium, design: .rounded))
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                                    .foregroundStyle(.primary.opacity(0.9))
+                            }
+                            .frame(maxHeight: .infinity)
+                        }
+                        .frame(width: 120, height: 120)
+                        .zIndex(1)
                     }
-                    .frame(width: 120, height: 120)
-                    .contentShape(Circle())
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 
@@ -512,9 +569,6 @@ private struct PauseBlock: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 12, weight: .medium))
-                                
-                                Text(formattedDuration)
-                                    .font(.system(.caption, design: .rounded))
                                 
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.system(size: 12, weight: .light))
@@ -563,6 +617,9 @@ private struct PauseBlock: View {
         withAnimation(.spring(duration: 0.3)) {
             state = .completed
         }
+        
+        // Fade out any playing bell sound
+        bellPlayer.fadeOutAndStop()
         
         // Play completion bell for last pause
         if isLastPause {
