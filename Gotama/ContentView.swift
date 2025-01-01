@@ -76,47 +76,83 @@ struct ContentView: View {
         NavigationStack(path: $navigationPath) {
             ZStack {
                 List {
-                    // Journal Section
-                    if let settings = settings.first, settings.journalEnabled {
+                    if let settings = settings.first, !settings.firstName.isEmpty {
+                        // Meditation Section
                         Section {
-                            ForEach(entries) { entry in
-                                NavigationLink(value: JournalDestination.existing(entry)) {
-                                    JournalEntryRow(entry: entry)
+                            if settings.meditationBellEnabled {
+                                NavigationLink(value: MeditationDestination.bell) {
+                                    Label("Solo", systemImage: "bell")
+                                        .padding(.vertical, 12)
+                                        .imageScale(.small)
                                 }
                             }
-                            .onDelete(perform: deleteEntries)
+                            
+                            NavigationLink(value: MeditationDestination.guided) {
+                                Label {
+                                    Text("Guided")
+                                } icon: {
+                                    Image(systemName: "asterisk")
+                                        .rotationEffect(.degrees(45))
+                                        .imageScale(.large)
+                                }
+                                .padding(.vertical, 12)
+                            }
                         } header: {
                             HStack {
-                                Text("Journal")
+                                Text("Meditate")
                                     .font(.title2)
                                     .fontWeight(.semibold)
                                     .foregroundStyle(.primary)
                                     .textCase(nil)
                                     .padding(.leading, -16)
                                 
-                                if currentStreak > 1 {
-                                    Text("(\(currentStreak) days in a row)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                if showLeafIcon {
-                                    Image(systemName: "leaf.fill")
-                                        .foregroundStyle(.accent.opacity(0.8))
-                                        .font(.caption)
-                                }
-                                
                                 Spacer()
-                                
-                                if entries.isEmpty {
-                                    Button(action: createAndOpenNewEntry) {
-                                        Image(systemName: "square.and.pencil")
-                                            .font(.title3)
-                                            .padding(.trailing, -16)
-                                    }
-                                }
                             }
                             .padding(.vertical, 8)
+                        }
+                        
+                        // Journal Section
+                        if settings.journalEnabled {
+                            Section {
+                                ForEach(entries) { entry in
+                                    NavigationLink(value: JournalDestination.existing(entry)) {
+                                        JournalEntryRow(entry: entry)
+                                    }
+                                }
+                                .onDelete(perform: deleteEntries)
+                            } header: {
+                                HStack {
+                                    Text("Journal")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.primary)
+                                        .textCase(nil)
+                                        .padding(.leading, -16)
+                                    
+                                    if currentStreak > 1 {
+                                        Text("(\(currentStreak) days in a row)")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    if showLeafIcon {
+                                        Image(systemName: "leaf.fill")
+                                            .foregroundStyle(.accent.opacity(0.8))
+                                            .font(.caption)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if entries.isEmpty {
+                                        Button(action: createAndOpenNewEntry) {
+                                            Image(systemName: "square.and.pencil")
+                                                .font(.title3)
+                                                .padding(.trailing, -16)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                            }
                         }
                     }
                     
@@ -162,6 +198,14 @@ struct ContentView: View {
                     case .new:
                         JournalEntryView(entry: nil)
                             .id(UUID())
+                    }
+                }
+                .navigationDestination(for: MeditationDestination.self) { destination in
+                    switch destination {
+                    case .bell:
+                        MeditationBellView()
+                    case .guided:
+                        ChatView(chat: createGuidedMeditationChat())
                     }
                 }
                 .toolbar {
@@ -241,6 +285,12 @@ struct ContentView: View {
             }
         }
     }
+    
+    private func createGuidedMeditationChat() -> Chat {
+        let chat = Chat()
+        chat.queuedUserMessage = "Please guide me in meditation for 5 minutes"
+        return chat
+    }
 }
 
 struct ChatRow: View {
@@ -306,4 +356,9 @@ enum ChatDestination: Hashable {
 enum JournalDestination: Hashable {
     case existing(JournalEntry)
     case new
+}
+
+enum MeditationDestination: Hashable {
+    case bell
+    case guided
 }

@@ -77,7 +77,7 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    Toggle("Meditation bell", isOn: $meditationBellEnabled)
+                    Toggle("Timer + Bell", isOn: $meditationBellEnabled)
                     Toggle("Journal", isOn: $journalEnabled)
                 } header: {
                     Text("Tools")

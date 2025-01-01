@@ -32,6 +32,7 @@ struct ChatView: View {
     @State private var isFirstLaunch = true
     @State private var onboardingViewModel: OnboardingViewModel?
     @State private var currentTask: Task<Void, Never>?
+    @State private var hasProcessedQueuedMessage = false
     
     @StateObject private var dictationHandler = ChatDictationHandler()
     
@@ -454,6 +455,22 @@ struct ChatView: View {
                     } else {
                         startAsteriskAnimation()
                     }
+                }
+            }
+            
+            // Process any queued user message for programmatic chat initialization
+            if !hasProcessedQueuedMessage,
+               let chat = chat,
+               let queuedMessage = chat.queuedUserMessage,
+               chat.messages.isEmpty {
+                hasProcessedQueuedMessage = true
+                // Set message text and clear the queue
+                messageText = queuedMessage
+                chat.queuedUserMessage = nil
+                // Trigger send on next run loop to ensure view is fully initialized
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(100))
+                    sendMessage()
                 }
             }
             
