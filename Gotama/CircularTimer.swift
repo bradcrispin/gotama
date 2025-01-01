@@ -13,46 +13,46 @@ struct CircularTimer: View {
             onTap()
         } label: {
             ZStack {
-                // Bell icon - only show for first or last pause
-                if isFirstOrLastPause {
-                    HStack {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.secondary.opacity(0.6))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 24)
-                    .zIndex(0)
-                }
-                
-                // Center timer
-                ZStack {
-                    // Progress ring
-                    Circle()
-                        .trim(from: 0, to: timeRemaining / duration)
-                        .stroke(
-                            Color.blue.opacity(0.9),
-                            style: StrokeStyle(
-                                lineWidth: 2,
-                                lineCap: .round
-                            )
+                // Outer ring (background)
+                Circle()
+                    .stroke(
+                        Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                        style: StrokeStyle(
+                            lineWidth: 3,
+                            lineCap: .round
                         )
-                        .rotationEffect(.degrees(-90))
-                    
-                    // Timer content
-                    VStack(spacing: 6) {
-                        Text(formattedTime)
-                            .font(.system(size: 32, weight: .medium, design: .rounded))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                            .foregroundStyle(.primary.opacity(0.9))
+                    )
+                
+                // Progress ring
+                Circle()
+                    .trim(from: 0, to: timeRemaining / duration)
+                    .stroke(
+                        Color.accent.opacity(0.9),
+                        style: StrokeStyle(
+                            lineWidth: 3,
+                            lineCap: .round
+                        )
+                    )
+                    .rotationEffect(.degrees(-90))
+                
+                // Timer content
+                ZStack {
+                    // Bell icon - only show for first or last pause
+                    if isFirstOrLastPause {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color.accent.opacity(0.6))
+                            .offset(y: -36)
                     }
-                    .frame(maxHeight: .infinity)
+                    
+                    Text(formattedTime)
+                        .font(.system(size: 44, weight: .light, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(.primary.opacity(0.9))
                 }
-                .frame(width: 120, height: 120)
-                .zIndex(1)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 160, height: 160)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -96,9 +96,21 @@ struct ChatPauseBlock: View {
                             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         }
                     } label: {
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 44))
-                            .foregroundStyle(.accent)
+                        ZStack {
+                            Circle()
+                                .stroke(
+                                    Color.gray.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                                    style: StrokeStyle(
+                                        lineWidth: 3,
+                                        lineCap: .round
+                                    )
+                                )
+                            
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 44))
+                                .foregroundStyle(.accent)
+                        }
+                        .frame(width: 160, height: 160)
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -176,7 +188,7 @@ struct ChatPauseBlock: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.97))
+        .background(colorScheme == .dark ? Color(.black) : Color(.white))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onDisappear {
             print("👋 ChatPauseBlock disappearing")

@@ -130,7 +130,7 @@ struct ChatCitationBlock: View {
                                 }
                             } label: {
                                 Image(systemName: showPali ? "text.magnifyingglass" : "magnifyingglass")
-                                    .foregroundStyle(showPali ? .blue : .secondary)
+                                    .foregroundStyle(showPali ? .accent : .secondary)
                             }
                             .buttonStyle(.plain)
                             .padding(.trailing, 8)
