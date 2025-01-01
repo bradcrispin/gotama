@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AudioToolbox
 import AVFoundation
+import MediaPlayer
 
 /// A custom bell sound player that creates a more meditation-appropriate sound
 private class BellPlayer: ObservableObject {
@@ -11,6 +12,7 @@ private class BellPlayer: ObservableObject {
     private var reverbEffect: AVAudioUnitReverb
     private var fadeTimer: Timer?
     private var audioFile: AVAudioFile?
+    private var volumeObserver: NSKeyValueObservation?
     
     // Audio enhancement parameters
     private let bellDuration: TimeInterval = 30.0  // Total duration
@@ -62,12 +64,35 @@ private class BellPlayer: ObservableObject {
         do {
             try audioEngine.start()
             print("🔔 Bell audio engine started")
+            
+            // Setup audio session
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+            
+            // Observe volume changes using AVAudioSession KVO
+            volumeObserver = AVAudioSession.sharedInstance().observe(\.outputVolume) { [weak self] _, _ in
+                self?.checkVolume()
+            }
+            
+            // Initial volume check
+            checkVolume()
+            
         } catch {
             print("❌ Failed to start audio engine: \(error)")
         }
     }
     
+    private func checkVolume() {
+        let volume = AVAudioSession.sharedInstance().outputVolume
+        if volume < 0.1 {
+            print("⚠️ User volume is low (\(Int(volume * 100))%)")
+        }
+    }
+    
     func playBell() {
+        // Check volume before playing
+        checkVolume()
+        
         guard let audioFile = audioFile else {
             print("❌ No audio file loaded, falling back to system sound")
             AudioServicesPlaySystemSound(1013)
@@ -171,6 +196,7 @@ private class BellPlayer: ObservableObject {
     }
     
     deinit {
+        volumeObserver?.invalidate()
         fadeTimer?.invalidate()
         audioEngine.stop()
         print("🔔 Bell audio engine stopped")
@@ -762,7 +788,7 @@ private struct MarkdownText: View {
             // Handle pause blocks - exactly like citation blocks
             if trimmedLine.hasPrefix("<pause>") && trimmedLine.hasSuffix("</pause>") {
                 // Single line pause block
-                print("⏲️ Processing single-line pause block: \(trimmedLine)")
+                // print("⏲️ Processing single-line pause block: \(trimmedLine)")
                 result.append(Line(content: trimmedLine, type: .pause, index: index, indentLevel: 0))
                 continue
             } else if trimmedLine == "<pause>" {

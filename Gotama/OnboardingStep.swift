@@ -170,6 +170,9 @@ enum OnboardingInputType {
         if success {
             print("✅ Step \(step.id) processed successfully")
             
+            // Check if this is the final step
+            let isFinalStep = currentStepIndex == steps.count - 1
+            
             // Fade out current step with synchronized state changes
             print("🎭 Starting fade out animation")
             withAnimation(.easeOut(duration: 0.3)) {
@@ -186,8 +189,17 @@ enum OnboardingInputType {
             currentStepIndex += 1
             print("📍 Moved to step \(currentStepIndex)")
             
-            // If we have more steps, start the next one
-            if !isComplete {
+            // Handle completion differently
+            if isFinalStep {
+                print("✨ Final step complete")
+                // Ensure we maintain 0 opacity for completion
+                viewOpacity = 0.0
+                showMessages = false
+                showInput = false
+                
+                // Post notification for onboarding completion
+                NotificationCenter.default.post(name: Notification.Name("OnboardingComplete"), object: nil)
+            } else if !isComplete {
                 print("🎬 Starting next step")
                 
                 // Ensure all states are reset before starting next step
@@ -208,8 +220,6 @@ enum OnboardingInputType {
                 try? await Task.sleep(for: .seconds(0.2))
                 
                 start()
-            } else {
-                print("✨ Onboarding complete")
             }
         } else {
             print("❌ Step processing failed")
@@ -385,62 +395,5 @@ struct OnboardingStep: Identifiable {
                 }
             }
         )
-    }
-}
-
-struct ToolUnlockCelebration: ViewModifier {
-    @State private var isAnimating = false
-    @State private var showCelebration = false
-    
-    func body(content: Content) -> some View {
-        ZStack {
-            content
-            
-            if showCelebration {
-                VStack(spacing: 16) {
-                    Image(systemName: "book.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white)
-                        .symbolEffect(.bounce, value: isAnimating)
-                    
-                    Text("Journal Unlocked!")
-                        .font(.title2.bold())
-                        .foregroundStyle(.white)
-                }
-                .padding(32)
-                .background(.accent)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(radius: 10)
-                .scaleEffect(isAnimating ? 1 : 0.5)
-                .opacity(isAnimating ? 1 : 0)
-                .animation(.spring(duration: 0.5), value: isAnimating)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("JournalToolUnlocked"))) { _ in
-            showCelebration = true
-            withAnimation {
-                isAnimating = true
-            }
-            
-            // Hide celebration after delay
-            Task {
-                try? await Task.sleep(for: .seconds(2))
-                await MainActor.run {
-                    withAnimation {
-                        isAnimating = false
-                    }
-                }
-                try? await Task.sleep(for: .seconds(0.5))
-                await MainActor.run {
-                    showCelebration = false
-                }
-            }
-        }
-    }
-}
-
-extension View {
-    func toolUnlockCelebration() -> some View {
-        modifier(ToolUnlockCelebration())
     }
 } 

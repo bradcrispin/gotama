@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var aboutMe: String = ""
     @State private var goal: String = ""
     @State private var journalEnabled: Bool = false
+    @State private var meditationBellEnabled: Bool = false
     @FocusState private var isApiKeyFocused: Bool
     let focusApiKey: Bool
     var onSaved: (() -> Void)?
@@ -76,6 +77,7 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Toggle("Meditation bell", isOn: $meditationBellEnabled)
                     Toggle("Journal", isOn: $journalEnabled)
                 } header: {
                     Text("Tools")
@@ -130,6 +132,7 @@ struct SettingsView: View {
                     aboutMe = existingSettings.aboutMe
                     goal = existingSettings.goal
                     journalEnabled = existingSettings.journalEnabled
+                    meditationBellEnabled = existingSettings.meditationBellEnabled
                 }
                 if focusApiKey {
                     isApiKeyFocused = true
@@ -146,6 +149,7 @@ struct SettingsView: View {
         print("About Me length: \(aboutMe.count)")
         print("Goal length: \(goal.count)")
         print("Journal: \(journalEnabled)")
+        print("Meditation Bell: \(meditationBellEnabled)")
         
         if let existingSettings = settings.first {
             print("📝 Updating existing settings")
@@ -155,6 +159,7 @@ struct SettingsView: View {
             existingSettings.aboutMe = aboutMe
             existingSettings.goal = goal
             existingSettings.journalEnabled = journalEnabled
+            existingSettings.meditationBellEnabled = meditationBellEnabled
         } else {
             print("✨ Creating new settings")
             let newSettings = Settings(
@@ -163,7 +168,8 @@ struct SettingsView: View {
                 priorExperience: priorExperience,
                 aboutMe: aboutMe,
                 goal: goal,
-                journalEnabled: journalEnabled
+                journalEnabled: journalEnabled,
+                meditationBellEnabled: meditationBellEnabled
             )
             modelContext.insert(newSettings)
         }

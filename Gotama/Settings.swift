@@ -9,14 +9,16 @@ final class Settings {
     var aboutMe: String
     var goal: String
     var journalEnabled: Bool
+    var meditationBellEnabled: Bool
     
-    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false) {
+    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false, meditationBellEnabled: Bool = false) {
         self.firstName = firstName
         self.anthropicApiKey = anthropicApiKey
         // self.priorExperience = priorExperience
         self.aboutMe = aboutMe
         self.goal = goal
         self.journalEnabled = journalEnabled
+        self.meditationBellEnabled = meditationBellEnabled
     }
     
     // Helper method to ensure single Settings instance
