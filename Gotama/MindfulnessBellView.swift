@@ -393,8 +393,6 @@ struct MindfulnessBellView: View {
                 } else {
                     withAnimation(.spring(response: 0.3)) {
                         isScheduled = false
-                        // Reset interval if turning off
-                        intervalHours = 0
                     }
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     saveSettings()
