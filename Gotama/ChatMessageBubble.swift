@@ -84,7 +84,7 @@ private struct MarkdownText: View {
         var inPauseBlock = false
         var currentBlock = ""
         
-        print("📝 Starting to parse lines")
+        // print("📝 Starting to parse lines")
         let lineArray = text.components(separatedBy: .newlines)
         
         for (index, line) in lineArray.enumerated() {

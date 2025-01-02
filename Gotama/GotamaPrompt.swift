@@ -258,7 +258,7 @@ struct GotamaPrompt {
         
         print("🔥 Final component count: \(components.count)")
         let prompt = components.joined(separator: "\n\n")
-        print("🔥 System prompt: \(prompt)")
+        // print("🔥 System prompt: \(prompt)")
         
         return prompt
     }
