@@ -12,7 +12,13 @@ final class Settings {
     var mindfulnessBellEnabled: Bool
     var meditationBellEnabled: Bool
     
-    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false, mindfulnessBellEnabled: Bool = false, meditationBellEnabled: Bool = false) {
+    // Mindfulness Bell Settings
+    var mindfulnessBellStartTime: Date?
+    var mindfulnessBellEndTime: Date?
+    var mindfulnessBellIntervalHours: Double
+    var mindfulnessBellIsScheduled: Bool
+    
+    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false, mindfulnessBellEnabled: Bool = false, meditationBellEnabled: Bool = false, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
         self.firstName = firstName
         self.anthropicApiKey = anthropicApiKey
         // self.priorExperience = priorExperience
@@ -21,6 +27,10 @@ final class Settings {
         self.journalEnabled = journalEnabled
         self.mindfulnessBellEnabled = mindfulnessBellEnabled
         self.meditationBellEnabled = meditationBellEnabled
+        self.mindfulnessBellStartTime = mindfulnessBellStartTime
+        self.mindfulnessBellEndTime = mindfulnessBellEndTime
+        self.mindfulnessBellIntervalHours = mindfulnessBellIntervalHours
+        self.mindfulnessBellIsScheduled = mindfulnessBellIsScheduled
     }
     
     // Helper method to ensure single Settings instance
