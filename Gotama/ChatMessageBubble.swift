@@ -154,9 +154,9 @@ private struct MarkdownText: View {
                 }
                 currentBlock += line
                 if inPauseBlock {
-                    print("⏲️ Adding to pause block: \(line)")
+                    // print("⏲️ Adding to pause block: \(line)")
                 } else {
-                    print("📚 Adding to citation block: \(line)")
+                    // print("📚 Adding to citation block: \(line)")
                 }
                 continue
             }
@@ -492,7 +492,7 @@ struct ChatMessageBubble: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 16)
-                    .padding(.bottom, 2)
+                    .padding(.bottom, -8)
             }
             
             HStack {

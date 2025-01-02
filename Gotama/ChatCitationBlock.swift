@@ -218,6 +218,7 @@ struct ChatCitationBlock: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(.vertical, 8)
+        .padding(.horizontal, -12)
         .onDisappear {
             copyTimer?.cancel()
             copyTimer = nil
