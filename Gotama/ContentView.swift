@@ -77,6 +77,30 @@ struct ContentView: View {
             ZStack {
                 List {
                     if let settings = settings.first, !settings.firstName.isEmpty {
+                                                
+                        // Mindfulness Section
+                        if settings.mindfulnessBellEnabled {
+                            Section {
+                                NavigationLink(value: MindfulnessDestination.bell) {
+                                    Label("Bell", systemImage: "bell.badge")
+                                        .padding(.vertical, 12)
+                                        .imageScale(.small)
+                                }
+                            } header: {
+                                HStack {
+                                    Text("Mindfulness")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.primary)
+                                        .textCase(nil)
+                                        .padding(.leading, -16)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
+                            }
+                        }
+                        
                         // Meditation Section
                         Section {
                             if settings.meditationBellEnabled {
@@ -214,6 +238,12 @@ struct ContentView: View {
                         MeditationBellView()
                     case .guided:
                         ChatView(chat: createGuidedMeditationChat())
+                    }
+                }
+                .navigationDestination(for: MindfulnessDestination.self) { destination in
+                    switch destination {
+                    case .bell:
+                        MindfulnessBellView()
                     }
                 }
                 .toolbar {
@@ -370,4 +400,8 @@ enum JournalDestination: Hashable {
 enum MeditationDestination: Hashable {
     case bell
     case guided
+}
+
+enum MindfulnessDestination: Hashable {
+    case bell
 }
