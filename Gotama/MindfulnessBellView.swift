@@ -317,7 +317,7 @@ struct MindfulnessBellView: View {
                 Spacer()
                 
                 // Debug button
-                debugButton
+                // debugButton
                 
                 Text("\(bellTimes.count) bell\(bellTimes.count == 1 ? "" : "s")")
                     .font(.subheadline)
