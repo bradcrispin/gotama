@@ -84,6 +84,17 @@ struct ChatView: View {
                                      from: nil,
                                      for: nil)
         
+        // Check API key configuration only if not in onboarding
+        if onboardingViewModel == nil {
+            print("🔍 Checking API key configuration...")
+            guard isApiKeyConfigured else {
+                print("❌ API key not configured")
+                errorMessage = "Tap here to add your Anthropic API key"
+                return
+            }
+            print("✅ API key configured, proceeding with message")
+        }
+        
         // Handle onboarding
         if let viewModel = onboardingViewModel {
             Task {
@@ -98,14 +109,6 @@ struct ChatView: View {
             }
             return
         }
-        
-        print("🔍 Checking API key configuration...")
-        guard isApiKeyConfigured else {
-            print("❌ API key not configured")
-            errorMessage = "Tap here to add your Anthropic API key"
-            return
-        }
-        print("✅ API key configured, proceeding with message")
         
         if chat == nil {
             let newChat = Chat()
@@ -482,8 +485,8 @@ struct ChatView: View {
                     let settings = try Settings.getOrCreate(modelContext: modelContext)
                     await anthropic.configure(with: settings.anthropicApiKey)
                     
-                    // Show API key error banner if not configured
-                    if settings.anthropicApiKey.isEmpty {
+                    // Only show API key error banner if not in onboarding and key not configured
+                    if settings.anthropicApiKey.isEmpty && onboardingViewModel == nil {
                         errorMessage = "Tap here to add your Anthropic API key"
                     }
                 } catch {
