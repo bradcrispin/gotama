@@ -24,58 +24,6 @@ struct ContentView: View {
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
     
-    private var currentStreak: Int {
-        guard !entries.isEmpty else { return 0 }
-        
-        // Check if there's an entry today
-        if !entries.contains(where: { $0.isFromToday }) {
-            return 0
-        }
-        
-        // Count consecutive days
-        var streak = 1
-        var currentDate = Calendar.current.startOfDay(for: Date())
-        
-        while true {
-            currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate)!
-            let hasEntry = entries.contains { entry in
-                Calendar.current.isDate(entry.createdAt, inSameDayAs: currentDate)
-            }
-            if hasEntry {
-                streak += 1
-            } else {
-                break
-            }
-        }
-        
-        return streak
-    }
-    
-    // Unused
-    private var streakMessage: String {
-        if entries.isEmpty {
-            return "Journal your practice to change your life"
-        }
-        
-        if let latest = entries.first {
-            if latest.isFromToday {
-                if currentStreak > 1 {
-                    return "\(currentStreak) days"
-                } else {
-                    return "The training is to pay attention"
-                }
-            } else {
-                return "Training becomes habit"
-            }
-        }
-        
-        return ""
-    }
-    
-    private var showLeafIcon: Bool {
-        currentStreak >= 3
-    }
-    
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
@@ -166,28 +114,6 @@ struct ContentView: View {
                                         .foregroundStyle(.primary)
                                         .textCase(nil)
                                         .padding(.leading, -16)
-                                    
-                                    if currentStreak > 1 {
-                                        Text("(\(currentStreak) days in a row)")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    
-                                    if showLeafIcon {
-                                        Image(systemName: "leaf.fill")
-                                            .foregroundStyle(.accent.opacity(0.8))
-                                            .font(.caption)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    if entries.isEmpty {
-                                        Button(action: createAndOpenNewEntry) {
-                                            Image(systemName: "square.and.pencil")
-                                                .font(.title3)
-                                                .padding(.trailing, -16)
-                                        }
-                                    }
                                 }
                                 .padding(.vertical, sectionVerticalPadding)
                             }

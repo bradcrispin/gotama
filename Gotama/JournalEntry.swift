@@ -7,16 +7,10 @@ final class JournalEntry {
     var createdAt: Date
     var updatedAt: Date
     
-    // Streak-related properties
-    var isPartOfStreak: Bool
-    var streakDay: Int
-    
-    init(text: String = "", createdAt: Date = Date(), updatedAt: Date = Date(), isPartOfStreak: Bool = false, streakDay: Int = 0) {
+    init(text: String = "", createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.text = text
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.isPartOfStreak = isPartOfStreak
-        self.streakDay = streakDay
     }
     
     // Helper function to check if entry was created today

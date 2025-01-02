@@ -48,21 +48,6 @@ struct JournalEntryView: View {
     
     private func createNewEntry() -> JournalEntry {
         let newEntry = JournalEntry(text: text)
-        
-        // Calculate streak
-        if let lastEntry = entries.first {
-            if lastEntry.isFromYesterday {
-                newEntry.isPartOfStreak = true
-                newEntry.streakDay = lastEntry.streakDay + 1
-            } else if !lastEntry.isFromToday {
-                newEntry.streakDay = 1
-                newEntry.isPartOfStreak = true
-            }
-        } else {
-            newEntry.streakDay = 1
-            newEntry.isPartOfStreak = true
-        }
-        
         return newEntry
     }
 }
