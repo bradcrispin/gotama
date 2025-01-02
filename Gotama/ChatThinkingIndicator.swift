@@ -30,6 +30,7 @@ struct ChatThinkingIndicator: View {
                     rotation = 360
                 }
             }
+            .padding(.top, 8)
     }
 }
 
