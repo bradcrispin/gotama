@@ -102,42 +102,40 @@ struct ContentView: View {
                         }
                         
                         // Meditation Section
-                        if settings.meditationBellEnabled || !settings.anthropicApiKey.isEmpty {
-                            Section {
-                                if settings.meditationBellEnabled {
-                                    NavigationLink(value: MeditationDestination.bell) {
-                                        Label("Solo", systemImage: "bell")
-                                            .padding(.vertical, 12)
-                                            .imageScale(.small)
-                                    }
-                                }
-                                
-                                // Only show guided meditation if API key is present
-                                if !settings.anthropicApiKey.isEmpty {
-                                    NavigationLink(value: MeditationDestination.guided) {
-                                        Label {
-                                            Text("Guided")
-                                        } icon: {
-                                            Image(systemName: "asterisk")
-                                                .rotationEffect(.degrees(45))
-                                                .imageScale(.large)
-                                        }
+                        Section {
+                            if settings.meditationBellEnabled {
+                                NavigationLink(value: MeditationDestination.bell) {
+                                    Label("Solo", systemImage: "bell")
                                         .padding(.vertical, 12)
-                                    }
+                                        .imageScale(.small)
                                 }
-                            } header: {
-                                HStack {
-                                    Text("Meditate")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.primary)
-                                        .textCase(nil)
-                                        .padding(.leading, -16)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, 8)
                             }
+                            
+                            // Only show guided meditation if API key is present
+                            if !settings.anthropicApiKey.isEmpty {
+                                NavigationLink(value: MeditationDestination.guided) {
+                                    Label {
+                                        Text("Guided")
+                                    } icon: {
+                                        Image(systemName: "asterisk")
+                                            .rotationEffect(.degrees(45))
+                                            .imageScale(.large)
+                                    }
+                                    .padding(.vertical, 12)
+                                }
+                            }
+                        } header: {
+                            HStack {
+                                Text("Meditate")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                    .textCase(nil)
+                                    .padding(.leading, -16)
+                                
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
                         }
                         
                         // Journal Section

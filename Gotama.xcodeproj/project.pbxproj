@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		9A3C4A9C2D24BB710084DC60 /* bell-meditation-75335.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */; };
+		9A3C4C062D270D0C0084DC60 /* bell-meditation.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9A3C4C052D270D0C0084DC60 /* bell-meditation.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "bell-meditation-75335.mp3"; sourceTree = "<group>"; };
+		9A3C4C052D270D0C0084DC60 /* bell-meditation.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "bell-meditation.caf"; sourceTree = "<group>"; };
 		9A6937142D18EDF500C110AE /* Gotama.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gotama.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -34,9 +36,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		9A3C4C042D270CFA0084DC60 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				9A3C4C052D270D0C0084DC60 /* bell-meditation.caf */,
+			);
+			path = Sounds;
+			sourceTree = "<group>";
+		};
 		9A69370B2D18EDF500C110AE = {
 			isa = PBXGroup;
 			children = (
+				9A3C4C042D270CFA0084DC60 /* Sounds */,
 				9A3C4A9B2D24BB710084DC60 /* bell-meditation-75335.mp3 */,
 				9A6937162D18EDF500C110AE /* Gotama */,
 				9A6937152D18EDF500C110AE /* Products */,
@@ -115,6 +126,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9A3C4C062D270D0C0084DC60 /* bell-meditation.caf in Resources */,
 				9A3C4A9C2D24BB710084DC60 /* bell-meditation-75335.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -67,6 +67,9 @@ struct MindfulnessBellView: View {
         _endTime = State(initialValue: defaultEnd)
         _intervalHours = State(initialValue: 0)
         _isScheduled = State(initialValue: false)
+        
+        // Set up notification delegate
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
     
     // MARK: - Computed Properties
@@ -313,6 +316,9 @@ struct MindfulnessBellView: View {
                 
                 Spacer()
                 
+                // Debug button
+                debugButton
+                
                 Text("\(bellTimes.count) bell\(bellTimes.count == 1 ? "" : "s")")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -378,6 +384,7 @@ struct MindfulnessBellView: View {
                                     isScheduled = true
                                 }
                                 saveSettings()
+                                scheduleNotifications()
                             @unknown default:
                                 break
                             }
@@ -391,12 +398,32 @@ struct MindfulnessBellView: View {
                     }
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     saveSettings()
+                    // Remove all pending notifications
+                    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 }
             }
         )) {
             Label("Schedule Active", systemImage: "clock.badge.checkmark")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+        }
+    }
+    
+    /// Debug button for testing notifications
+    private var debugButton: some View {
+        Button {
+            scheduleDebugNotification()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        } label: {
+            Label("Test", systemImage: "clock.badge.exclamationmark")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.secondary.opacity(0.1))
+                )
         }
     }
     
@@ -435,6 +462,7 @@ struct MindfulnessBellView: View {
         do {
             try modelContext.save()
             print("✅ Saved mindfulness bell settings")
+            print("Is scheduled: \(isScheduled)")
         } catch {
             print("❌ Error saving settings: \(error)")
         }
@@ -476,11 +504,25 @@ struct MindfulnessBellView: View {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             DispatchQueue.main.async {
                 if granted {
-                    // Permission granted, enable schedule
+                    // Permission granted, enable schedule and schedule notifications
                     withAnimation(.spring(response: 0.3)) {
                         isScheduled = true
                     }
                     saveSettings()
+                    scheduleNotifications()
+                    
+                    // Verify schedule was set
+                    Task {
+                        let pending = await UNUserNotificationCenter.current().pendingNotificationRequests()
+                        if pending.isEmpty {
+                            print("⚠️ No notifications were scheduled")
+                            isScheduled = false
+                        } else {
+                            print("✅ Verified \(pending.count) notifications are scheduled")
+                            isScheduled = true
+                        }
+                        saveSettings()
+                    }
                 } else {
                     // Permission denied, show settings alert
                     notificationAlertType = .denied
@@ -496,11 +538,127 @@ struct MindfulnessBellView: View {
         }
     }
     
+    /// Get the custom notification sound
+    private func getNotificationSound() -> UNNotificationSound {
+        // Debug bundle contents
+        print("📦 Bundle resource paths:")
+        if let resourcePath = Bundle.main.resourcePath {
+            do {
+                let contents = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
+                for item in contents {
+                    print("  - \(item)")
+                }
+            } catch {
+                print("❌ Error listing bundle contents: \(error)")
+            }
+        }
+        
+        // Try to find our custom sound
+        if let soundURL = Bundle.main.url(forResource: "bell-meditation-75335", withExtension: "mp3") {
+            print("✅ Found sound file at: \(soundURL)")
+            return UNNotificationSound(named: UNNotificationSoundName(soundURL.lastPathComponent))
+        } else {
+            print("⚠️ Could not find bell sound file, using default")
+            return .default
+        }
+    }
+    
+    /// Schedule all notifications for bell times
+    private func scheduleNotifications() {
+        // Remove any existing notifications first
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        
+        guard isScheduled else { return }
+        
+        // Create notification content
+        let content = UNMutableNotificationContent()
+        content.title = "Mindfulness Bell"
+        content.body = "Take a moment to be present"
+        content.sound = getNotificationSound()
+        
+        // Schedule each bell time
+        for time in bellTimes {
+            let components = Calendar.current.dateComponents([.hour, .minute], from: time)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            
+            let request = UNNotificationRequest(
+                identifier: "mindfulnessBell-\(time.timeIntervalSince1970)",
+                content: content,
+                trigger: trigger
+            )
+            
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("❌ Error scheduling notification: \(error)")
+                }
+            }
+        }
+        
+        print("✅ Scheduled \(bellTimes.count) notifications")
+    }
+    
+    /// Schedule a debug notification for testing
+    private func scheduleDebugNotification() {
+        // First check and print current notification settings
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            print("📱 Current notification settings:")
+            print("  Authorization status: \(settings.authorizationStatus.rawValue)")
+            print("  Alert setting: \(settings.alertSetting.rawValue)")
+            print("  Sound setting: \(settings.soundSetting.rawValue)")
+            
+            // List any pending notifications
+            let pending = await UNUserNotificationCenter.current().pendingNotificationRequests()
+            print("📋 Pending notifications: \(pending.count)")
+            for request in pending {
+                print("  - \(request.identifier)")
+            }
+        }
+        
+        // Use the same content as production notifications
+        let content = UNMutableNotificationContent()
+        content.title = "Mindfulness Bell"
+        content.body = "Take a moment to be present"
+        content.sound = getNotificationSound()
+        
+        // Schedule for 10 seconds from now
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 10, repeats: false)
+        print("🔔 Scheduling debug notification for 10 seconds from now at \(Date().addingTimeInterval(10))")
+        
+        let request = UNNotificationRequest(
+            identifier: "debugBell-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Error scheduling debug notification: \(error)")
+            } else {
+                print("✅ Successfully scheduled debug notification")
+            }
+        }
+    }
+    
     /// Open app settings
     private func openSettings() {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
         }
+    }
+}
+
+// MARK: - Notification Delegate
+class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        print("📬 Will present notification: \(notification.request.identifier)")
+        return [.banner, .sound]
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        print("👆 Did receive notification response: \(response.notification.request.identifier)")
     }
 }
 
