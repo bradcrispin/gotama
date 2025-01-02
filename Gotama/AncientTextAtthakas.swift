@@ -40,12 +40,12 @@ enum AncientTextAtthakas {
     Ubhosu antesu vineyya chandaṁ,
     Phassaṁ pariññāya anānugiddho;
     Yadattagarahī tadakubbamāno,
-    Na lippatī diṭṭhasutesu dhīro. Variant: Na lippatī → na limpatī (sya-all, mr)
+    Na lippatī diṭṭhasutesu dhīro. 
 
     Saññaṁ pariññā vitareyya oghaṁ,
     Pariggahesu muni nopalitto;
     Abbūḷhasallo caramappamatto,
-    Nāsīsatī lokamimaṁ parañcāti. Variant: Nāsīsatī → nāsiṁsatī (bj); nāsiṁsati (sya-all, pts-vp-pli1)
+    Nāsīsatī lokamimaṁ parañcāti. 
 
     Guhaṭṭhakasuttaṁ dutiyaṁ.
     </pali>
@@ -63,7 +63,7 @@ enum AncientTextAtthakas {
     Yathā hi jāneyya tathā vadeyya.
 
     Yo attano sīlavatāni jantu,
-    Anānupuṭṭhova paresa pāva; Variant: paresa → parassa (si, mr) | pāva → pāvā (bj, sya-all, pts-vp-pli1)
+    Anānupuṭṭhova paresa pāva; 
     Anariyadhammaṁ kusalā tamāhu,
     Yo ātumānaṁ sayameva pāva.
 
@@ -89,7 +89,7 @@ enum AncientTextAtthakas {
 
     Upayo hi dhammesu upeti vādaṁ,
     Anūpayaṁ kena kathaṁ vadeyya;
-    Attā nirattā na hi tassa atthi, Variant: nirattā → attaṁ nirattaṁ (bahūsu)
+    Attā nirattā na hi tassa atthi, 
     Adhosi so diṭṭhimidheva sabbanti.
 
     Duṭṭhaṭṭhakasuttaṁ tatiyaṁ.
@@ -100,7 +100,7 @@ enum AncientTextAtthakas {
 
     Passāmi suddhaṁ paramaṁ arogaṁ,
     Diṭṭhena saṁsuddhi narassa hoti;
-    Evābhijānaṁ paramanti ñatvā, Variant: Evābhijānaṁ → etābhijānaṁ (bj, pts-vp-pli1)
+    Evābhijānaṁ paramanti ñatvā, 
     Suddhānupassīti pacceti ñāṇaṁ.
 
     Diṭṭhena ce suddhi narassa hoti,
@@ -116,7 +116,7 @@ enum AncientTextAtthakas {
     Purimaṁ pahāya aparaṁ sitāse,
     Ejānugā te na taranti saṅgaṁ;
     Te uggahāyanti nirassajanti,
-    Kapīva sākhaṁ pamuñcaṁ gahāyaṁ. Variant: pamuñcaṁ gahāyaṁ → pamukhaṁ gahāya (bj, sya-all); pamuñcaṁ gahāya (pts-vp-pli1); pamuñca gahāya (mr)
+    Kapīva sākhaṁ pamuñcaṁ gahāyaṁ. 
 
     Sayaṁ samādāya vatāni jantu,
     Uccāvacaṁ gacchati saññasatto;
@@ -150,7 +150,7 @@ enum AncientTextAtthakas {
     Tasmā vivādāni avītivatto.
 
     Yadattanī passati ānisaṁsaṁ,
-    Diṭṭhe sute sīlavate mute vā; Variant: sīlavate → sīlabbate (si, sya-all)
+    Diṭṭhe sute sīlavate mute vā; 
     Tadeva so tattha samuggahāya,
     Nihīnato passati sabbamaññaṁ.
 
@@ -159,14 +159,14 @@ enum AncientTextAtthakas {
     Tasmā hi diṭṭhaṁ va sutaṁ mutaṁ vā,
     Sīlabbataṁ bhikkhu na nissayeyya.
 
-    Diṭṭhimpi lokasmiṁ na kappayeyya, Variant: Diṭṭhimpi → diṭṭhimapi (mr)
+    Diṭṭhimpi lokasmiṁ na kappayeyya, 
     Ñāṇena vā sīlavatena vāpi;
     Samoti attānamanūpaneyya,
     Hīno na maññetha visesi vāpi.
 
     Attaṁ pahāya anupādiyāno,
     Ñāṇepi so nissayaṁ no karoti;
-    Sa ve viyattesu na vaggasārī, Variant: viyattesu → viyuttesu (bj-a); dviyattesu (mr)
+    Sa ve viyattesu na vaggasārī, 
     Diṭṭhimpi so na pacceti kiñci.
 
     Yassūbhayante paṇidhīdha natthi,

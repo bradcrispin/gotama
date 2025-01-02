@@ -24,8 +24,8 @@ struct ChatCitationBlock: View {
         
         /// Formats text by adding line breaks before capital letters
         private static func formatWithLineBreaks(_ text: String) -> String {
-            // Add a line break before any capital letter (except the first character)
-            let pattern = "(?<!^)(?=[A-ZĀĪŪṀṄṆṆṚṜḌḤḲḶṂṄṆṚṜṢṬ])"
+            // Add a line break before any capital letter (except the first character and those after quotes)
+            let pattern = "(?<!^)(?<![\"'])(?=[A-ZĀĪŪṀṄṆṆṚṜḌḤḲḶṂṄṆṚṜṢṬ])"
             return text.replacingOccurrences(
                 of: pattern,
                 with: "\n\n",
