@@ -479,6 +479,11 @@ struct ChatView: View {
                 do {
                     let settings = try Settings.getOrCreate(modelContext: modelContext)
                     await anthropic.configure(with: settings.anthropicApiKey)
+                    
+                    // Show API key error banner if not configured
+                    if settings.anthropicApiKey.isEmpty {
+                        errorMessage = "Tap here to add your Anthropic API key"
+                    }
                 } catch {
                     print("❌ Error configuring Anthropic client: \(error)")
                 }
