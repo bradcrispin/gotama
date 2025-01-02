@@ -31,16 +31,32 @@ struct ContentView: View {
                     if let settings = settings.first, !settings.firstName.isEmpty {
                                                 
                         // Mindfulness Section
-                        if settings.mindfulnessBellEnabled {
+                        if settings.mindfulnessBellEnabled || settings.journalEnabled {
                             Section {
-                                NavigationLink(value: MindfulnessDestination.bell) {
-                                    Label("Bell", systemImage: "bell.badge")
-                                        .padding(.vertical, navigationLinkVerticalPadding)
-                                        .imageScale(.small)
+                                if settings.mindfulnessBellEnabled {
+                                    NavigationLink(value: MindfulnessDestination.bell) {
+                                        Label("Bell", systemImage: "bell.badge")
+                                                .padding(.vertical, navigationLinkVerticalPadding)
+                                                .imageScale(.small)
+                                    }
+                                }
+                                if settings.journalEnabled {
+                                    NavigationLink(value: JournalDestination.existing(journal ?? JournalEntry())) {
+                                            Label {
+                                                if let entry = journal {
+                                                    JournalEntryRow(entry: entry)
+                                                } else {
+                                                    Text("Loading...")
+                                                }
+                                            } icon: {
+                                                Image(systemName: "text.book.closed")
+                                                    .imageScale(.large)
+                                            }
+                                        }
                                 }
                             } header: {
                                 HStack {
-                                    Text("Mindfulness")
+                                    Text("Mindful")
                                         .font(.title2)
                                         .fontWeight(.semibold)
                                         .foregroundStyle(.primary)
@@ -87,34 +103,6 @@ struct ContentView: View {
                                         .padding(.leading, -16)
                                     
                                     Spacer()
-                                }
-                                .padding(.vertical, sectionVerticalPadding)
-                            }
-                        }
-                        
-                        // Journal Section
-                        if settings.journalEnabled {
-                            Section {
-                                NavigationLink(value: JournalDestination.existing(journal ?? JournalEntry())) {
-                                    Label {
-                                        if let entry = journal {
-                                            JournalEntryRow(entry: entry)
-                                        } else {
-                                            Text("Loading...")
-                                        }
-                                    } icon: {
-                                        Image(systemName: "text.book.closed")
-                                            .imageScale(.large)
-                                    }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Journal")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.primary)
-                                        .textCase(nil)
-                                        .padding(.leading, -16)
                                 }
                                 .padding(.vertical, sectionVerticalPadding)
                             }
@@ -268,14 +256,6 @@ struct ChatRow: View {
 struct JournalEntryRow: View {
     let entry: JournalEntry
     
-    var previewText: String {
-        if entry.text.isEmpty {
-            return "New entry"
-        }
-        let firstLine = entry.text.split(separator: "\n", maxSplits: 1)[0]
-        return String(firstLine)
-    }
-    
     private var dateDescription: String {
         if entry.isFromToday {
             return "Today"
@@ -288,15 +268,15 @@ struct JournalEntryRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(previewText)
+            Text("Journal")
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
                 .font(.body)
             
-            Text(dateDescription)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // Text(dateDescription)
+            //     .font(.caption)
+            //     .foregroundStyle(.secondary)
                 // .textCase(.uppercase)
         }
         .padding(.vertical, 8)
