@@ -10,7 +10,7 @@ import SwiftData
 
 // MARK: - Development Configuration
 /// Set to true to skip launch screen animations during development
-private let skipLaunchScreenForDevelopment = true
+private let skipLaunchScreenForDevelopment = false
 
 @main
 struct GotamaApp: App {
