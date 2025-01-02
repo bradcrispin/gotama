@@ -11,11 +11,11 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var navigationPath: NavigationPath
-    @Query(sort: \JournalEntry.updatedAt, order: .reverse) private var entries: [JournalEntry]
     @Query(sort: \Chat.updatedAt, order: .reverse) private var chats: [Chat]
     @State private var isSettingsPresented = false
     @State private var isChatSectionExpanded = true
     @Query private var settings: [Settings]
+    @State private var journal: JournalEntry?
     
     // MARK: - Configuration
     private let sectionVerticalPadding: CGFloat = 2  // Controls padding for section headers
@@ -95,17 +95,18 @@ struct ContentView: View {
                         // Journal Section
                         if settings.journalEnabled {
                             Section {
-                                ForEach(entries) { entry in
-                                    NavigationLink(value: JournalDestination.existing(entry)) {
-                                        Label {
+                                NavigationLink(value: JournalDestination.existing(journal ?? JournalEntry())) {
+                                    Label {
+                                        if let entry = journal {
                                             JournalEntryRow(entry: entry)
-                                        } icon: {
-                                            Image(systemName: "text.book.closed")
-                                                .imageScale(.large)
+                                        } else {
+                                            Text("Loading...")
                                         }
+                                    } icon: {
+                                        Image(systemName: "text.book.closed")
+                                            .imageScale(.large)
                                     }
                                 }
-                                .onDelete(perform: deleteEntries)
                             } header: {
                                 HStack {
                                     Text("Journal")
@@ -159,9 +160,6 @@ struct ContentView: View {
                     switch destination {
                     case .existing(let entry):
                         JournalEntryView(entry: entry)
-                    case .new:
-                        JournalEntryView(entry: nil)
-                            .id(UUID())
                     }
                 }
                 .navigationDestination(for: MeditationDestination.self) { destination in
@@ -221,20 +219,11 @@ struct ContentView: View {
                 }
             }
         }
-    }
-    
-    private func createAndOpenNewEntry() {
-        haptics.impactOccurred()
-        withAnimation {
-            navigationPath.append(JournalDestination.new)
-        }
-    }
-    
-    private func deleteEntries(offsets: IndexSet) {
-        haptics.impactOccurred()
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(entries[index])
+        .task {
+            do {
+                journal = try JournalEntry.getOrCreate(modelContext: modelContext)
+            } catch {
+                print("❌ Error loading journal: \(error)")
             }
         }
     }
@@ -326,7 +315,6 @@ enum ChatDestination: Hashable {
 
 enum JournalDestination: Hashable {
     case existing(JournalEntry)
-    case new
 }
 
 enum MeditationDestination: Hashable {
