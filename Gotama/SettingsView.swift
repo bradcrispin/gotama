@@ -77,8 +77,22 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    Toggle("Timer + Bell", isOn: $meditationBellEnabled)
-                    Toggle("Journal", isOn: $journalEnabled)
+                    Toggle(isOn: $meditationBellEnabled) {
+                        Label {
+                            Text("Timer + Bell")
+                        } icon: {
+                            Image(systemName: "bell")
+                                .imageScale(.large)
+                        }
+                    }
+                    Toggle(isOn: $journalEnabled) {
+                        Label {
+                            Text("Journal")
+                        } icon: {
+                            Image(systemName: "text.book.closed")
+                                .imageScale(.large)
+                        }
+                    }
                 } header: {
                     Text("Tools")
                 }

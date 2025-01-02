@@ -95,7 +95,7 @@ struct GotamaProfileView: View {
                                 Text("Add to your profile or enable tools to give Gotama more context.")
                                     .foregroundColor(.secondary)
                             } else {
-                                Text("Adjust the context for conversations.")
+                                Text("Give Gotama more context for conversations.")
                             }
                         }
                     }
