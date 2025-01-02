@@ -106,7 +106,7 @@ struct ContentView: View {
                             Section {
                                 if settings.meditationBellEnabled {
                                     NavigationLink(value: MeditationDestination.bell) {
-                                        Label("Solo", systemImage: "bell")
+                                        Label("Timer", systemImage: "timer")
                                             .padding(.vertical, 12)
                                             .imageScale(.small)
                                     }

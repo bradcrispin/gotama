@@ -80,7 +80,7 @@ struct SettingsView: View {
                 Section {
                     Toggle(isOn: $mindfulnessBellEnabled) {
                         Label {
-                            Text("Mindfulness Bell")
+                            Text("Bell")
                         } icon: {
                             Image(systemName: "bell.badge")
                                 .imageScale(.large)
@@ -88,9 +88,9 @@ struct SettingsView: View {
                     }
                     Toggle(isOn: $meditationBellEnabled) {
                         Label {
-                            Text("Meditation Bell")
+                            Text("Timer")
                         } icon: {
-                            Image(systemName: "bell")
+                            Image(systemName: "timer")
                                 .imageScale(.large)
                         }
                     }

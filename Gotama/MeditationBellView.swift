@@ -108,7 +108,7 @@ struct MeditationBellView: View {
                 }
             }
             .padding(.horizontal)
-            .navigationTitle("Meditate")
+            .navigationTitle("Meditation Timer")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedDuration) { _, newDuration in
                 timeRemaining = newDuration
