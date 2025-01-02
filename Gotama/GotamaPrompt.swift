@@ -239,7 +239,7 @@ struct GotamaPrompt {
                     print("📔 Found \(entries.count) journal entries")
                     var journalText = ""
                     var totalLength = 0
-                    let maxLength = 1000
+                    let maxLength = 10000
                     
                     for entry in entries {
                         let entryText = "- \(entry.text)\n"
