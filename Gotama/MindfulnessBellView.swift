@@ -448,6 +448,19 @@ struct MindfulnessBellView: View {
         }
         intervalHours = settings.mindfulnessBellIntervalHours
         isScheduled = settings.mindfulnessBellIsScheduled
+        
+        // If scheduled, verify notifications exist
+        if isScheduled {
+            Task {
+                let pending = await UNUserNotificationCenter.current().pendingNotificationRequests()
+                if pending.isEmpty {
+                    print("⚠️ Schedule was on but no notifications found, rescheduling...")
+                    scheduleNotifications()
+                } else {
+                    print("✅ Found \(pending.count) scheduled notifications")
+                }
+            }
+        }
     }
     
     /// Save current settings to SwiftData
@@ -470,10 +483,17 @@ struct MindfulnessBellView: View {
     
     /// Validate settings and update UI state
     private func validateAndUpdate() {
-        // Cancel any existing schedule when settings change
+        // Only cancel schedule if settings actually changed and we're currently scheduled
         if isScheduled {
-            withAnimation {
-                isScheduled = false
+            let hours = Calendar.current.dateComponents([.hour], from: startTime, to: endTime).hour ?? 0
+            let settingsChanged = Double(hours) < intervalHours || endTime <= startTime
+            
+            if settingsChanged {
+                withAnimation {
+                    isScheduled = false
+                }
+                // Remove notifications since settings are invalid
+                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
             }
         }
         
