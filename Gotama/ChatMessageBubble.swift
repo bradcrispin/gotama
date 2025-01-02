@@ -20,6 +20,7 @@ private struct MarkdownText: View {
         let type: LineType
         let index: Int
         let indentLevel: Int
+        let parsedDuration: TimeInterval?
         
         enum LineType: Equatable {
             case text
@@ -36,7 +37,7 @@ private struct MarkdownText: View {
     /// Extracts the duration in seconds from a pause block content
     /// Format: <pause>30 seconds</pause> or <pause>10 minutes</pause>
     private func extractPauseDuration(from text: String) -> TimeInterval {
-        print("⏲️ Parsing pause duration from text: \(text)")
+        // print("⏲️ Parsing pause duration from text: \(text)")
         
         // Default duration if parsing fails
         let defaultDuration: TimeInterval = 30
@@ -46,18 +47,18 @@ private struct MarkdownText: View {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
               let range = Range(match.range(at: 1), in: text) else {
-            print("⏲️ Failed to extract pause content, using default duration: \(defaultDuration)")
+            // print("⏲️ Failed to extract pause content, using default duration: \(defaultDuration)")
             return defaultDuration
         }
         
         let innerContent = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
-        print("⏲️ Extracted pause content: \(innerContent)")
+        // print("⏲️ Extracted pause content: \(innerContent)")
         
         // Split into number and unit
         let components = innerContent.components(separatedBy: .whitespaces)
         guard components.count == 2,
               let number = Double(components[0]) else {
-            print("⏲️ Invalid pause format, using default duration: \(defaultDuration)")
+            // print("⏲️ Invalid pause format, using default duration: \(defaultDuration)")
             return defaultDuration
         }
         
@@ -70,11 +71,11 @@ private struct MarkdownText: View {
         case "minutes", "minute":
             duration = number * 60
         default:
-            print("⏲️ Unknown time unit '\(unit)', using default duration: \(defaultDuration)")
+            // print("⏲️ Unknown time unit '\(unit)', using default duration: \(defaultDuration)")
             return defaultDuration
         }
         
-        print("⏲️ Parsed pause duration: \(duration) seconds")
+        // print("⏲️ Parsed pause duration: \(duration) seconds")
         return duration
     }
     
@@ -86,6 +87,7 @@ private struct MarkdownText: View {
         var currentBlock = ""
         
         // print("📝 Starting to parse lines")
+        
         let lineArray = text.components(separatedBy: .newlines)
         
         for (index, line) in lineArray.enumerated() {
@@ -95,7 +97,7 @@ private struct MarkdownText: View {
             // Handle empty lines
             if trimmedLine.isEmpty {
                 if !inCodeBlock && !inCitationBlock && !inPauseBlock {
-                    result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0))
+                    result.append(Line(content: "", type: .emptyLine, index: index, indentLevel: 0, parsedDuration: nil))
                 } else {
                     // Add empty line to current block if we're in any block type
                     currentBlock += "\n"
@@ -105,7 +107,7 @@ private struct MarkdownText: View {
             
             // Check for style indicators at the start of the message
             if index == 0 && trimmedLine.hasPrefix("*") && trimmedLine.hasSuffix("*") {
-                result.append(Line(content: trimmedLine, type: .styleIndicator, index: index, indentLevel: 0))
+                result.append(Line(content: trimmedLine, type: .styleIndicator, index: index, indentLevel: 0, parsedDuration: nil))
                 continue
             }
             
@@ -119,7 +121,7 @@ private struct MarkdownText: View {
                 if inCitationBlock {
                     currentBlock += "\n" + trimmedLine
                     print("📚 Ending citation block: \(currentBlock)")
-                    result.append(Line(content: currentBlock, type: .citation, index: index, indentLevel: 0))
+                    result.append(Line(content: currentBlock, type: .citation, index: index, indentLevel: 0, parsedDuration: nil))
                     currentBlock = ""
                     inCitationBlock = false
                 }
@@ -129,8 +131,8 @@ private struct MarkdownText: View {
             // Handle pause blocks - exactly like citation blocks
             if trimmedLine.hasPrefix("<pause>") && trimmedLine.hasSuffix("</pause>") {
                 // Single line pause block
-                // print("⏲️ Processing single-line pause block: \(trimmedLine)")
-                result.append(Line(content: trimmedLine, type: .pause, index: index, indentLevel: 0))
+                let duration = extractPauseDuration(from: trimmedLine)
+                result.append(Line(content: trimmedLine, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
                 continue
             } else if trimmedLine == "<pause>" {
                 print("⏲️ Starting multi-line pause block")
@@ -141,7 +143,8 @@ private struct MarkdownText: View {
                 if inPauseBlock {
                     currentBlock += "\n" + trimmedLine
                     print("⏲️ Ending multi-line pause block: \(currentBlock)")
-                    result.append(Line(content: currentBlock, type: .pause, index: index, indentLevel: 0))
+                    let duration = extractPauseDuration(from: currentBlock)
+                    result.append(Line(content: currentBlock, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
                     currentBlock = ""
                     inPauseBlock = false
                 }
@@ -154,11 +157,6 @@ private struct MarkdownText: View {
                     currentBlock += "\n"
                 }
                 currentBlock += line
-                if inPauseBlock {
-                    // print("⏲️ Adding to pause block: \(line)")
-                } else {
-                    // print("📚 Adding to citation block: \(line)")
-                }
                 continue
             }
             
@@ -167,7 +165,7 @@ private struct MarkdownText: View {
                 if inCodeBlock {
                     // End code block
                     if !currentBlock.isEmpty {
-                        result.append(Line(content: currentBlock, type: .code, index: index, indentLevel: 0))
+                        result.append(Line(content: currentBlock, type: .code, index: index, indentLevel: 0, parsedDuration: nil))
                         currentBlock = ""
                     }
                     inCodeBlock = false
@@ -187,23 +185,28 @@ private struct MarkdownText: View {
             }
             
             // Handle regular text
-            result.append(Line(content: trimmedLine, type: .text, index: index, indentLevel: indentLevel))
+            result.append(Line(content: trimmedLine, type: .text, index: index, indentLevel: indentLevel, parsedDuration: nil))
         }
         
         // Add any remaining block
         if !currentBlock.isEmpty {
             let blockType: Line.LineType
+            let duration: TimeInterval?
             if inCodeBlock {
                 blockType = .code
+                duration = nil
             } else if inCitationBlock {
                 blockType = .citation
+                duration = nil
             } else if inPauseBlock {
                 blockType = .pause
+                duration = extractPauseDuration(from: currentBlock)
             } else {
                 blockType = .text
+                duration = nil
             }
             print("📝 Adding remaining block of type \(blockType): \(currentBlock)")
-            result.append(Line(content: currentBlock, type: blockType, index: lineArray.count, indentLevel: 0))
+            result.append(Line(content: currentBlock, type: blockType, index: lineArray.count, indentLevel: 0, parsedDuration: duration))
         }
         
         return result
@@ -315,9 +318,8 @@ private struct MarkdownText: View {
         print("🎯 Creating PauseBlock - First: \(isFirstPause), Last: \(isLastPause), Active: \(isActive)")
         
         if isActive {
-            let duration = extractPauseDuration(from: line.content)
             return ChatPauseBlock(
-                duration: duration,
+                duration: line.parsedDuration ?? 30,
                 isFirstPause: isFirstPause,
                 isLastPause: isLastPause,
                 onComplete: {
@@ -380,7 +382,7 @@ private struct MarkdownText: View {
             }
         } else {
             return ChatPauseBlock(
-                duration: extractPauseDuration(from: line.content),
+                duration: line.parsedDuration ?? 30,
                 state: .completed,
                 isFirstPause: isFirstPause,
                 isLastPause: isLastPause,
