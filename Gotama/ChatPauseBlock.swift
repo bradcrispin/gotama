@@ -13,12 +13,12 @@ struct ChatPauseBlock: View {
     let isLastPause: Bool
     let scrollProxy: ScrollViewProxy?
     let messageId: PersistentIdentifier
+    let bellPlayer: BellPlayer
     
     @State private var timeRemaining: TimeInterval
     @State private var timer: Timer?
     @State private var state: TimerState
     @State private var completedDuration: TimeInterval = 0
-    @StateObject private var bellPlayer = BellPlayer()
     
     // System sound ID for transition
     private let pauseRenderSound: SystemSoundID = 1104  // Gentle chime for transitions
@@ -46,7 +46,7 @@ struct ChatPauseBlock: View {
         case transition
     }
     
-    init(duration: TimeInterval, state: TimerState = .ready, isFirstPause: Bool = false, isLastPause: Bool = false, onComplete: @escaping () -> Void, onReset: (() -> Void)? = nil, scrollProxy: ScrollViewProxy?, messageId: PersistentIdentifier) {
+    init(duration: TimeInterval, state: TimerState = .ready, isFirstPause: Bool = false, isLastPause: Bool = false, onComplete: @escaping () -> Void, onReset: (() -> Void)? = nil, scrollProxy: ScrollViewProxy?, messageId: PersistentIdentifier, bellPlayer: BellPlayer) {
         print("🎯 Initializing ChatPauseBlock - First: \(isFirstPause), Last: \(isLastPause)")
         self.duration = duration
         self.onComplete = onComplete
@@ -55,6 +55,7 @@ struct ChatPauseBlock: View {
         self.isLastPause = isLastPause
         self.scrollProxy = scrollProxy
         self.messageId = messageId
+        self.bellPlayer = bellPlayer
         self._timeRemaining = State(initialValue: duration)
         self._state = State(initialValue: state)
         

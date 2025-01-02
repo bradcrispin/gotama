@@ -35,6 +35,7 @@ struct ChatView: View {
     @State private var hasProcessedQueuedMessage = false
     
     @StateObject private var dictationHandler = ChatDictationHandler()
+    @StateObject private var bellPlayer = BellPlayer()
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -282,7 +283,8 @@ struct ChatView: View {
                         onRetry: retryMessage,
                         onScrollProxySet: { proxy in
                             scrollProxy = proxy
-                        }
+                        },
+                        bellPlayer: bellPlayer
                     )
                     .transition(.opacity.animation(.easeInOut(duration: 0.3)))
                 } else {

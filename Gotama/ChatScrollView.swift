@@ -31,6 +31,7 @@ struct ChatScrollView: View {
     @Binding var viewOpacity: Double
     let onRetry: (ChatMessage) async -> Void
     let onScrollProxySet: (ScrollViewProxy) -> Void
+    let bellPlayer: BellPlayer
     
     // MARK: - Body
     var body: some View {
@@ -44,7 +45,8 @@ struct ChatScrollView: View {
                             showError: true,
                             messageText: $messageText,
                             showConfirmation: false,
-                            scrollProxy: proxy
+                            scrollProxy: proxy,
+                            bellPlayer: bellPlayer
                         )
                         .id(message.id)
                         .transition(.opacity)
@@ -118,6 +120,7 @@ struct ChatScrollView: View {
         messageText: .constant(""),
         viewOpacity: .constant(1.0),
         onRetry: { _ in },
-        onScrollProxySet: { _ in }
+        onScrollProxySet: { _ in },
+        bellPlayer: BellPlayer()
     )
 } 

@@ -9,6 +9,7 @@ private struct MarkdownText: View {
     var onPauseComplete: (() -> Void)?
     let messageId: PersistentIdentifier
     let scrollProxy: ScrollViewProxy?
+    let bellPlayer: BellPlayer
     
     @State private var currentPauseIndex: Int = 0
     @State private var hasActivePause: Bool = false
@@ -362,7 +363,8 @@ private struct MarkdownText: View {
                     hasActivePause = false
                 },
                 scrollProxy: scrollProxy,
-                messageId: messageId
+                messageId: messageId,
+                bellPlayer: bellPlayer
             )
             .padding(.vertical, 24) // Consistent padding above and below
             .transition(.opacity.combined(with: .scale(scale: 0.95)).animation(.easeInOut(duration: 0.5).delay(3.0))) // Increased delay to 3 seconds
@@ -393,7 +395,8 @@ private struct MarkdownText: View {
                     }
                 },
                 scrollProxy: scrollProxy,
-                messageId: messageId
+                messageId: messageId,
+                bellPlayer: bellPlayer
             )
             .padding(.vertical, 24) // Consistent padding above and below
         }
@@ -471,6 +474,7 @@ struct ChatMessageBubble: View {
     let showConfirmation: Bool
     var onPauseComplete: (() -> Void)?
     let scrollProxy: ScrollViewProxy?
+    let bellPlayer: BellPlayer
     
     @State private var showCopied = false
     @State private var showDeleteConfirmation = false
@@ -506,7 +510,8 @@ struct ChatMessageBubble: View {
                             text: message.content,
                             onPauseComplete: onPauseComplete,
                             messageId: message.persistentModelID,
-                            scrollProxy: scrollProxy
+                            scrollProxy: scrollProxy,
+                            bellPlayer: bellPlayer
                         )
                         .textSelection(.enabled)
                         .padding(.vertical, 8)
@@ -667,6 +672,7 @@ struct ChatMessageBubble: View {
         showError: true,
         messageText: .constant(""),
         showConfirmation: false,
-        scrollProxy: nil
+        scrollProxy: nil,
+        bellPlayer: BellPlayer()
     )
 } 
