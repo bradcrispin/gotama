@@ -26,15 +26,8 @@ struct ChatCitationBlock: View {
         /// - Before capital letters (except after quotes)
         /// - Before quotes that follow spaces
         private static func formatWithLineBreaks(_ text: String) -> String {
-            // First, add line breaks before quotes that follow spaces
-            let withQuoteBreaks = text.replacingOccurrences(
-                of: "\\s+[\"']",
-                with: "\n\n\"",
-                options: [.regularExpression]
-            )
-            
-            // Then add line breaks before capital letters (except after quotes)
-            let withCapitalBreaks = withQuoteBreaks.replacingOccurrences(
+            // Add line breaks before capital letters that aren't preceded by quotes
+            let withCapitalBreaks = text.replacingOccurrences(
                 of: "(?<!^)(?<![\"'])(?=[A-ZĀĪŪṀṄṆṆṚṜḌḤḲḶṂṄṆṚṜṢṬ])",
                 with: "\n\n",
                 options: [.regularExpression]
