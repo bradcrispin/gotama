@@ -17,6 +17,10 @@ struct ContentView: View {
     @State private var isChatSectionExpanded = true
     @Query private var settings: [Settings]
     
+    // MARK: - Configuration
+    private let sectionVerticalPadding: CGFloat = 2  // Controls padding for section headers
+    private let navigationLinkVerticalPadding: CGFloat = 8  // Controls padding for navigation links
+    
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
     
@@ -83,7 +87,7 @@ struct ContentView: View {
                             Section {
                                 NavigationLink(value: MindfulnessDestination.bell) {
                                     Label("Bell", systemImage: "bell.badge")
-                                        .padding(.vertical, 12)
+                                        .padding(.vertical, navigationLinkVerticalPadding)
                                         .imageScale(.small)
                                 }
                             } header: {
@@ -97,7 +101,7 @@ struct ContentView: View {
                                     
                                     Spacer()
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.vertical, sectionVerticalPadding)
                             }
                         }
                         
@@ -107,7 +111,7 @@ struct ContentView: View {
                                 if settings.meditationBellEnabled {
                                     NavigationLink(value: MeditationDestination.bell) {
                                         Label("Timer", systemImage: "timer")
-                                            .padding(.vertical, 12)
+                                            .padding(.vertical, navigationLinkVerticalPadding)
                                             .imageScale(.small)
                                     }
                                 }
@@ -122,7 +126,7 @@ struct ContentView: View {
                                                 .rotationEffect(.degrees(45))
                                                 .imageScale(.large)
                                         }
-                                        .padding(.vertical, 12)
+                                        .padding(.vertical, navigationLinkVerticalPadding)
                                     }
                                 }
                             } header: {
@@ -136,7 +140,7 @@ struct ContentView: View {
                                     
                                     Spacer()
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.vertical, sectionVerticalPadding)
                             }
                         }
                         
@@ -185,7 +189,7 @@ struct ContentView: View {
                                         }
                                     }
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.vertical, sectionVerticalPadding)
                             }
                         }
                     }
@@ -210,7 +214,7 @@ struct ContentView: View {
                             
                             Spacer()
                         }
-                        .padding(.vertical, 8)
+                        .padding(.vertical, sectionVerticalPadding)
                     }
                 }
                 .listStyle(.insetGrouped)
