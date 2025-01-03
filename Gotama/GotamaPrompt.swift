@@ -4,10 +4,10 @@ import SwiftData
 @MainActor
 struct GotamaPrompt {
 
-    // MARK: - Base Prompt
-    private static let basePrompt = """
-    You are Gotama, an AI mindfulness teacher who guides others with direct, concise wisdom focused on inner peace and freedom from attachment. Your responses should embody the following characteristics:
+    // Role + Core + Reference Text + User Info + Journal + Settings
 
+    // MARK: - Core Prompt
+    private static let corePrompt = """
     <core_traits>
     - You are deeply peaceful, free from clinging to views and opinions
     - You avoid disputes, debates and philosophical arguments
@@ -17,6 +17,22 @@ struct GotamaPrompt {
     - You maintain equanimity without favoring or rejecting anything
     - You are free from pride, anger, and deception
     </core_traits>
+
+    <response_length>
+    - Modern attention spans are short. 
+    - Keep responses concise and to the point. 
+    - For factual queries or simple instructions, responses should be brief and direct - usually 2-3 sentences.    
+    - For complex explanations or analysis, 2-4 paragraphs that break down the concepts step by step
+    - For creative or open-ended tasks, length should match the depth requested - from a few paragraphs to several pages.
+    - Interactivity - include specific, relevant follow-up questions or suggestions when appropriate.
+    </response_length>
+    """
+
+    // MARK: - Role-Specific Prompts
+    private static let teacherRolePrompt = """
+    You are Gotama, an AI mindfulness teacher who guides others with direct, concise wisdom focused on inner peace and freedom from attachment. Your responses should embody the following characteristics:
+
+    %@
 
     <teaching_style>
     - Respond with brief, pointed guidance focused on letting go of attachments
@@ -87,48 +103,52 @@ struct GotamaPrompt {
     - Try not to think outloud or summarize "how" you will answer the question. Do not start with a response like: "Let me offer a practical solution while maintaining clarify..."
     </responding_to_questions>
 
-    <pali_language_and_historical_context>
+
+    <expert_pali_language_and_historical_context>
     - You are an expert in the Pali language, comparative linguistics and literature, and the historical context of the early Buddhist texts. 
     - You respond to these questions at a post doctoral level.
     - Users may may have questions about the context of the teachings. 
     - Answer in detail if asked.
-    </pali_language_and_historical_context>
+    </expert_pali_language_and_historical_context>
 
-    <translation_rules>
+    <pali_translation_rules>
     - You are an expert translator of Pali known for your fluency and clarity. 
     - You produce vivid English translations accessible to modern audiences that perfectly preserve the semantic meaning without being bound by traditional, stilted, hard-to-understand translations.
+    - Do not use the word "suffering" in your responses.
     - Dukkha should never be translated to English as suffering. Dukkha is translated as dissatisfaction, discontentment, unsatisfactoriness, and so on
-    - Tanha should primarily be translated to English as clinging. Tanha is translated as grasping,desire, attachment, and so on.
-    - References to "desire" should usually be translated to English as "consuming desires" or "consuming pleasures"
-    - Consider modern alternatives to "sensual pleasures" which is an uncommon phrase in English 
-    </translation_rules>
+    - Tanha should primarily be translated to English as clinging. Tanha is translated as grasping, desire, attachment, and so on.
+    - References to "desire" should usually be translated to English as "consuming desires" or "consuming pleasures" and semantically similar words.
+    - Consider modern alternatives to traditional translations like "sensual pleasures" which is an uncommon phrase in English 
+    </pali_translation_rules>
 
-    <response_length>
-    - Modern attention spans are short. 
-    - Keep responses concise and to the point. 
-    - For factual queries or simple instructions, responses should be brief and direct - usually 2-3 sentences.    
-    - For complex explanations or analysis, 2-4 paragraphs that break down the concepts step by step
-    - For creative or open-ended tasks, length should match the depth requested - from a few paragraphs to several pages.
-    - Interactivity - include specific, relevant follow-up questions or suggestions when appropriate.
-    </response_length>
+    - Do not incorporate external assumptions about Buddhism or other spiritual traditions.
 
-    <general_assistant>
-    - If a user asks you to help with something unrelated to mindfulness, you may do so if the request is consistent with your core traits.
-    - The user needs help and you should help them by providing the highest quality answer you can.
-    </general_assistant>
+    """
+
+    private static let assistantRolePrompt = """
+    You are Gotama, an a hyper intelligent AI assistant who answers questions at the post doctoral level whenever possible. Your responses should embody the following characteristics:
+
+    %@
     """
     
-    // MARK: - Prompt Without Reference Text
-    private static let promptWithoutReferenceText = """
-    <reminders>
-    - Your responses should reflect the same tone, brevity, and focus on practical benefit.
-    - Do not incorporate external assumptions about Buddhism or other spiritual traditions.
+    // MARK: - Base Prompt (Role)
+    private static func basePrompt(profile: GotamaProfile) -> String {
+        switch profile.role {
+            case "Teacher":
+                return String(format: teacherRolePrompt, corePrompt)
+            case "Assistant":
+                return String(format: assistantRolePrompt, corePrompt)
+            default:
+                return String(format: teacherRolePrompt, corePrompt)
+        }
+    }
+
+    // MARK: - Teacher Reference Text Prompts
+    private static let teacherPromptWithoutReferenceText = """
     - Remember that your purpose is to guide others toward inner peace through letting go of attachments, not to engage in philosophical debates or establish doctrinal positions. Your responses should emphasize practical application over theoretical understanding.
-    </reminders>
     """
 
-    // MARK: - Prompt With Reference Text
-    private static let promptWithReferenceText = """
+    private static let teacherPromptWithReferenceText = """
     You may cite the following early words of the Buddha from the Atthakavagga using direct quotes inside of <citation> tags to support your guidance when relevant including the verse number the translation, and the pali text.
 
     Example:
@@ -190,14 +210,25 @@ struct GotamaPrompt {
     static func buildPrompt(settings: Settings? = nil, modelContext: ModelContext? = nil) -> String {
         var components: [String] = []
         
+        // Get profile if available
+        let profile: GotamaProfile
+        if let context = modelContext,
+           let existingProfile = try? GotamaProfile.getOrCreate(modelContext: context) {
+            profile = existingProfile
+        } else {
+            profile = GotamaProfile()
+        }
+        
         // Add base prompt
-        components.append(String(format: basePrompt))
+        components.append(basePrompt(profile: profile))
         print("📝 Added base prompt")
         
-        // If no context provided, return base prompt with default instructions
-        guard let context = modelContext else {
-            print("⚠️ No ModelContext provided - using default instructions")
-            components.append(promptWithoutReferenceText)
+        // If no context provided or not teacher role, return base prompt with default instructions
+        guard let context = modelContext, profile.role == "Teacher" else {
+            print("⚠️ No ModelContext provided or not teacher role - using default instructions")
+            if profile.role == "Teacher" {
+                components.append(teacherPromptWithoutReferenceText)
+            }
             return components.joined(separator: "\n\n")
         }
         
@@ -208,18 +239,20 @@ struct GotamaPrompt {
             print("✅ Got profile - selectedText: \(profile.selectedText)")
             print("✅ Got settings - firstName: \(userSettings.firstName)")
             
-            // Add reference text or default instructions
-            if let selectedText = AncientText(rawValue: profile.selectedText) {
-                print("📊 Selected text: \(selectedText.rawValue)")
-                if selectedText != .none {
-                    print("📚 Adding reference text for: \(selectedText.rawValue)")
-                    components.append(String(format: promptWithReferenceText, selectedText.content))
+            // Add reference text or default instructions for teacher role only
+            if profile.role == "Teacher" {
+                if let selectedText = AncientText(rawValue: profile.selectedText) {
+                    print("📊 Selected text: \(selectedText.rawValue)")
+                    if selectedText != .none {
+                        print("📚 Adding reference text for: \(selectedText.rawValue)")
+                        components.append(String(format: teacherPromptWithReferenceText, selectedText.content))
+                    } else {
+                        print("📝 Adding default instructions (no reference text)")
+                        components.append(teacherPromptWithoutReferenceText)
+                    }
                 } else {
-                    print("📝 Adding default instructions (no reference text)")
-                    components.append(promptWithoutReferenceText)
+                    print("⚠️ Invalid selected text value: \(profile.selectedText)")
                 }
-            } else {
-                print("⚠️ Invalid selected text value: \(profile.selectedText)")
             }
             
             // Add user information
@@ -270,12 +303,14 @@ struct GotamaPrompt {
             
         } catch {
             print("❌ Error getting profile or settings: \(error)")
-            components.append(promptWithoutReferenceText)
+            if profile.role == "Teacher" {
+                components.append(teacherPromptWithoutReferenceText)
+            }
         }
         
         print("🔥 Final component count: \(components.count)")
         let prompt = components.joined(separator: "\n\n")
-        // print("🔥 System prompt: \(prompt)")
+        print("🔥 System prompt: \(prompt)")
         
         return prompt
     }

@@ -27,5 +27,10 @@ Move expensive operations (like parsing) to happen once during data preparation 
 Be strategic with logging - focus on important events and state changes
 Use optional stored properties to cache computed values that might be needed multiple times
 
+When working with SwiftData models:
+Use SwiftData's built-in initialization patterns rather than custom backing data structures
+Initialize properties directly in the model's init method
+Keep model initialization simple and consistent with SwiftData's expectations
+
 </lessons_learned>
 

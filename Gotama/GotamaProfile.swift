@@ -26,9 +26,9 @@ final class GotamaProfile {
     /// Singleton instance tracking
     private static var instance: GotamaProfile?
     
-    /// Private initializer to enforce singleton pattern through getOrCreate
-    fileprivate init(model: String) {
-        self.model = model
+    /// Initialize with default values
+    init() {
+        self.model = GotamaProfile.defaultModel
         self.includeGoal = true
         self.includeAboutMe = true
         self.includeJournal = true
@@ -73,7 +73,7 @@ final class GotamaProfile {
         
         // Create new profile if none exists
         print("✨ Creating new Gotama profile")
-        let newProfile = GotamaProfile(model: defaultModel)
+        let newProfile = GotamaProfile()
         modelContext.insert(newProfile)
         try modelContext.save()
         
@@ -89,6 +89,11 @@ final class GotamaProfile {
     static func resetToDefault(modelContext: ModelContext) throws {
         let profile = try getOrCreate(modelContext: modelContext)
         profile.model = defaultModel
+        profile.includeGoal = true
+        profile.includeAboutMe = true
+        profile.includeJournal = true
+        profile.selectedText = AncientText.none.rawValue
+        profile.role = defaultRole
         try modelContext.save()
         print("🔄 Reset Gotama profile to defaults")
     }
