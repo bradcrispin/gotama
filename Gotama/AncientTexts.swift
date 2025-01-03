@@ -3,7 +3,7 @@ import Foundation
 enum AncientText: String, CaseIterable, Identifiable {
     case none = "None"
     case atthakas = "Atthakas (Snp 4.2 - 4.5)"
-    // case atthakavagga = "Atthakavagga (Snp 4)"
+    case atthakavagga = "Atthakavagga (Snp 4)"
     
     var id: String { rawValue }
     
@@ -13,8 +13,8 @@ enum AncientText: String, CaseIterable, Identifiable {
             return ""
         case .atthakas:
             return AncientTextAtthakas.content
-        // case .atthakavagga:
-        //     return AncientTextAtthakavagga.content
+        case .atthakavagga:
+            return AncientTextAtthakavagga.content
         }
     }
     
@@ -24,8 +24,8 @@ enum AncientText: String, CaseIterable, Identifiable {
             return "No ancient text selected"
         case .atthakas:
             return "Selected verses from the Atthaka collection"
-        // case .atthakavagga:
-        //     return "The complete Atthaka collection"
+        case .atthakavagga:
+            return "The complete Atthaka collection"
         }
     }
 } 
