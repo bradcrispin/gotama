@@ -69,10 +69,10 @@ struct ContentView: View {
                             }
                         }
                         
-                        if settings.meditationBellEnabled || !settings.anthropicApiKey.isEmpty {
+                        if settings.meditationTimerEnabled || !settings.anthropicApiKey.isEmpty {
                             // Meditation Section
                             Section {
-                                if settings.meditationBellEnabled {
+                                if settings.meditationTimerEnabled {
                                     NavigationLink(value: MeditationDestination.bell) {
                                         Label("Timer", systemImage: "timer")
                                             .padding(.vertical, navigationLinkVerticalPadding)
@@ -153,7 +153,7 @@ struct ContentView: View {
                 .navigationDestination(for: MeditationDestination.self) { destination in
                     switch destination {
                     case .bell:
-                        MeditationBellView()
+                        MeditationTimerView()
                     case .guided:
                         ChatView(chat: createGuidedMeditationChat())
                     }

@@ -13,7 +13,7 @@ struct SettingsView: View {
     @State private var goal: String = ""
     @State private var journalEnabled: Bool = false
     @State private var mindfulnessBellEnabled: Bool = false
-    @State private var meditationBellEnabled: Bool = false
+    @State private var meditationTimerEnabled: Bool = false
     @FocusState private var isApiKeyFocused: Bool
     let focusApiKey: Bool
     var onSaved: (() -> Void)?
@@ -86,7 +86,7 @@ struct SettingsView: View {
                                 .imageScale(.large)
                         }
                     }
-                    Toggle(isOn: $meditationBellEnabled) {
+                    Toggle(isOn: $meditationTimerEnabled) {
                         Label {
                             Text("Timer")
                         } icon: {
@@ -156,7 +156,7 @@ struct SettingsView: View {
                     goal = existingSettings.goal
                     journalEnabled = existingSettings.journalEnabled
                     mindfulnessBellEnabled = existingSettings.mindfulnessBellEnabled
-                    meditationBellEnabled = existingSettings.meditationBellEnabled
+                    meditationTimerEnabled = existingSettings.meditationTimerEnabled
                 }
                 if focusApiKey {
                     isApiKeyFocused = true
@@ -174,7 +174,7 @@ struct SettingsView: View {
         print("Goal length: \(goal.count)")
         print("Journal: \(journalEnabled)")
         print("Mindfulness Bell: \(mindfulnessBellEnabled)")
-        print("Meditation Bell: \(meditationBellEnabled)")
+        print("Meditation Bell: \(meditationTimerEnabled)")
         
         if let existingSettings = settings.first {
             print("📝 Updating existing settings")
@@ -185,7 +185,7 @@ struct SettingsView: View {
             existingSettings.goal = goal
             existingSettings.journalEnabled = journalEnabled
             existingSettings.mindfulnessBellEnabled = mindfulnessBellEnabled
-            existingSettings.meditationBellEnabled = meditationBellEnabled
+            existingSettings.meditationTimerEnabled = meditationTimerEnabled
         } else {
             print("✨ Creating new settings")
             let newSettings = Settings(
@@ -196,7 +196,7 @@ struct SettingsView: View {
                 goal: goal,
                 journalEnabled: journalEnabled,
                 mindfulnessBellEnabled: mindfulnessBellEnabled,
-                meditationBellEnabled: meditationBellEnabled
+                meditationTimerEnabled: meditationTimerEnabled
             )
             modelContext.insert(newSettings)
         }

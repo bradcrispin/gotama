@@ -10,7 +10,7 @@ final class Settings {
     var goal: String
     var journalEnabled: Bool
     var mindfulnessBellEnabled: Bool
-    var meditationBellEnabled: Bool
+    var meditationTimerEnabled: Bool
     
     // Mindfulness Bell Settings
     var mindfulnessBellStartTime: Date?
@@ -35,7 +35,7 @@ final class Settings {
         return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
     }
     
-    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = true, mindfulnessBellEnabled: Bool = true, meditationBellEnabled: Bool = true, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
+    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = true, mindfulnessBellEnabled: Bool = true, meditationTimerEnabled: Bool = true, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
         // In development, try to load API key from environment
         let finalApiKey = Settings.isDevelopment ? Settings.loadDevApiKey() : anthropicApiKey
         
@@ -46,7 +46,7 @@ final class Settings {
         self.goal = goal
         self.journalEnabled = journalEnabled
         self.mindfulnessBellEnabled = mindfulnessBellEnabled
-        self.meditationBellEnabled = meditationBellEnabled
+        self.meditationTimerEnabled = meditationTimerEnabled
         self.mindfulnessBellStartTime = mindfulnessBellStartTime
         self.mindfulnessBellEndTime = mindfulnessBellEndTime
         self.mindfulnessBellIntervalHours = mindfulnessBellIntervalHours

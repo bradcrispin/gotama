@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A view that provides an elegant meditation timer experience with bell sounds
-struct MeditationBellView: View {
+struct MeditationTimerView: View {
     // MARK: - Environment & State
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var bellPlayer = BellPlayer()
@@ -297,6 +297,6 @@ struct MeditationBellView: View {
 // MARK: - Previews
 #Preview {
     NavigationStack {
-        MeditationBellView()
+        MeditationTimerView()
     }
 } 
