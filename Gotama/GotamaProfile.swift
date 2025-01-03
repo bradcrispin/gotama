@@ -16,8 +16,12 @@ final class GotamaProfile {
     /// Selected ancient text for reference
     var selectedText: String
     
+    /// Role selection for Gotama's behavior
+    var role: String
+    
     /// Default values for the profile
     static let defaultModel = "claude-3-5-sonnet-20241022"
+    static let defaultRole = "Teacher"
     
     /// Singleton instance tracking
     private static var instance: GotamaProfile?
@@ -29,6 +33,7 @@ final class GotamaProfile {
         self.includeAboutMe = true
         self.includeJournal = true
         self.selectedText = AncientText.none.rawValue
+        self.role = GotamaProfile.defaultRole
     }
     
     /// Helper method to ensure single GotamaProfile instance
