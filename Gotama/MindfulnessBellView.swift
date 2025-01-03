@@ -20,6 +20,7 @@ struct MindfulnessBellView: View {
     @State private var showValidationMessage = false
     @State private var showNotificationAlert = false
     @State private var notificationAlertType: NotificationAlertType = .needsPermission
+    @State private var currentInstructionIndex: Int = 0  // Track which instruction we're on
     
     // MARK: - Types
     
@@ -588,14 +589,17 @@ struct MindfulnessBellView: View {
         
         guard isScheduled else { return }
         
-        // Create notification content
-        let content = UNMutableNotificationContent()
-        content.title = "Mindfulness Bell"
-        content.body = "Take a moment to be present"
-        content.sound = getNotificationSound()
+        // Reset instruction index when starting fresh schedule
+        currentInstructionIndex = 0
         
         // Schedule each bell time
         for time in bellTimes {
+            // Create notification content with sequential instruction
+            let content = UNMutableNotificationContent()
+            content.title = "Gotama struck the bell"
+            content.body = MindfulnessInstructions.getInstruction(forIndex: currentInstructionIndex)
+            content.sound = getNotificationSound()
+            
             let components = Calendar.current.dateComponents([.hour, .minute], from: time)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
             
@@ -610,9 +614,12 @@ struct MindfulnessBellView: View {
                     print("❌ Error scheduling notification: \(error)")
                 }
             }
+            
+            // Increment instruction index for next notification
+            currentInstructionIndex += 1
         }
         
-        print("✅ Scheduled \(bellTimes.count) notifications")
+        print("✅ Scheduled \(bellTimes.count) notifications with sequential instructions")
     }
     
     /// Schedule a debug notification for testing
@@ -630,13 +637,16 @@ struct MindfulnessBellView: View {
             print("📋 Pending notifications: \(pending.count)")
             for request in pending {
                 print("  - \(request.identifier)")
+                if let content = request.content.mutableCopy() as? UNMutableNotificationContent {
+                    print("    Message: \(content.body)")
+                }
             }
         }
         
-        // Use the same content as production notifications
+        // Use the same content as production notifications but with random instruction
         let content = UNMutableNotificationContent()
         content.title = "Mindfulness Bell"
-        content.body = "Take a moment to be present"
+        content.body = MindfulnessInstructions.getRandomInstruction()
         content.sound = getNotificationSound()
         
         // Schedule for 10 seconds from now
