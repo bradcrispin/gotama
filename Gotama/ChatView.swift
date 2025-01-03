@@ -325,7 +325,9 @@ struct ChatView: View {
                         Text("Gotama")
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                             .fontWeight(.semibold)
-                        Text(profile?.selectedText == AncientText.none.rawValue ? "Modern" : "Ancient")
+                        Text(profile?.role == "Teacher" ? 
+                             (profile?.selectedText == AncientText.none.rawValue ? "Modern" : "Ancient") :
+                             "Assistant")
                             .foregroundStyle(.gray.opacity(0.8))
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12))

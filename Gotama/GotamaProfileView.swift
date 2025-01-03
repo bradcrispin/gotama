@@ -185,7 +185,9 @@ struct GotamaProfileView: View {
                     HStack(spacing: 3) {
                         Text("Gotama")
                             .fontWeight(.semibold)
-                        Text(selectedText == .none ? "Modern" : "Ancient")
+                        Text(role == "Teacher" ? 
+                             (selectedText == .none ? "Modern" : "Ancient") :
+                             "Assistant")
                             .foregroundStyle(.gray.opacity(0.8))
                     }
                 }
