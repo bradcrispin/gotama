@@ -35,9 +35,11 @@ struct ContentView: View {
                             Section {
                                 if settings.mindfulnessBellEnabled {
                                     NavigationLink(value: MindfulnessDestination.bell) {
-                                        Label("Bell", systemImage: "bell.badge")
-                                                .padding(.vertical, navigationLinkVerticalPadding)
-                                                .imageScale(.small)
+                                        Label("Bell", systemImage: settings.mindfulnessBellIsScheduled ? "bell.badge" : "bell.slash")
+                                            .padding(.vertical, navigationLinkVerticalPadding)
+                                            .imageScale(.small)
+                                            .contentTransition(.symbolEffect(.replace))
+                                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: settings.mindfulnessBellIsScheduled)
                                     }
                                 }
                                 if settings.journalEnabled {
