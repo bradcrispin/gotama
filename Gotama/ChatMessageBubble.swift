@@ -5,6 +5,10 @@ import MediaPlayer
 
 /// A view that renders markdown text with support for code blocks and lists
 private struct MarkdownText: View {
+    /// DEVELOPMENT CONFIGURATION
+    /// Set to false to disable parsing of <pause> blocks during development
+    static let enablePauseBlocks = false
+    
     let text: String
     var onPauseComplete: (() -> Void)?
     let messageId: PersistentIdentifier
@@ -128,26 +132,32 @@ private struct MarkdownText: View {
                 continue
             }
             
-            // Handle pause blocks - exactly like citation blocks
-            if trimmedLine.hasPrefix("<pause>") && trimmedLine.hasSuffix("</pause>") {
-                // Single line pause block
-                let duration = extractPauseDuration(from: trimmedLine)
-                result.append(Line(content: trimmedLine, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
-                continue
-            } else if trimmedLine == "<pause>" {
-                print("⏲️ Starting multi-line pause block")
-                inPauseBlock = true
-                currentBlock = trimmedLine
-                continue
-            } else if trimmedLine == "</pause>" {
-                if inPauseBlock {
-                    currentBlock += "\n" + trimmedLine
-                    print("⏲️ Ending multi-line pause block: \(currentBlock)")
-                    let duration = extractPauseDuration(from: currentBlock)
-                    result.append(Line(content: currentBlock, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
-                    currentBlock = ""
-                    inPauseBlock = false
+            // Handle pause blocks - only if enabled
+            if Self.enablePauseBlocks {
+                if trimmedLine.hasPrefix("<pause>") && trimmedLine.hasSuffix("</pause>") {
+                    // Single line pause block
+                    let duration = extractPauseDuration(from: trimmedLine)
+                    result.append(Line(content: trimmedLine, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
+                    continue
+                } else if trimmedLine == "<pause>" {
+                    print("⏲️ Starting multi-line pause block")
+                    inPauseBlock = true
+                    currentBlock = trimmedLine
+                    continue
+                } else if trimmedLine == "</pause>" {
+                    if inPauseBlock {
+                        currentBlock += "\n" + trimmedLine
+                        print("⏲️ Ending multi-line pause block: \(currentBlock)")
+                        let duration = extractPauseDuration(from: currentBlock)
+                        result.append(Line(content: currentBlock, type: .pause, index: index, indentLevel: 0, parsedDuration: duration))
+                        currentBlock = ""
+                        inPauseBlock = false
+                    }
+                    continue
                 }
+            } else if trimmedLine.hasPrefix("<pause>") || trimmedLine == "<pause>" {
+                // When pause blocks are disabled, treat them as regular text
+                result.append(Line(content: trimmedLine, type: .text, index: index, indentLevel: indentLevel, parsedDuration: nil))
                 continue
             }
             
