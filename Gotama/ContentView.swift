@@ -105,7 +105,7 @@ struct ContentView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
-                .navigationTitle("Home")
+                .navigationTitle("Studio")
                 .navigationDestination(for: ChatDestination.self) { destination in
                     switch destination {
                     case .existing(let chat):
