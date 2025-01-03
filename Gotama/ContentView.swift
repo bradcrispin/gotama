@@ -30,8 +30,8 @@ struct ContentView: View {
                 List {
                     if let settings = settings.first, !settings.firstName.isEmpty {
                                                 
-                        // Mindfulness Section
-                        if settings.mindfulnessBellEnabled || settings.journalEnabled {
+                        // Tools Section
+                        if settings.mindfulnessBellEnabled || settings.journalEnabled || settings.meditationTimerEnabled {
                             Section {
                                 if settings.mindfulnessBellEnabled {
                                     NavigationLink(value: MindfulnessDestination.bell) {
@@ -50,56 +50,26 @@ struct ContentView: View {
                                                 }
                                             } icon: {
                                                 Image(systemName: "text.book.closed")
-                                                    .imageScale(.large)
-                                            }
+                                                .imageScale(.large)
                                         }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Mindful")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.primary)
-                                        .textCase(nil)
-                                        .padding(.leading, -16)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, sectionVerticalPadding)
-                            }
-                        }
-                        
-                        if settings.meditationTimerEnabled || !settings.anthropicApiKey.isEmpty {
-                            // Meditation Section
-                            Section {
-                                if settings.meditationTimerEnabled {
-                                    NavigationLink(value: MeditationDestination.bell) {
-                                        Label("Timer", systemImage: "timer")
-                                            .padding(.vertical, navigationLinkVerticalPadding)
-                                            .imageScale(.small)
                                     }
                                 }
-                                
-                                // Only show guided meditation if API key is present
-                                // if !settings.anthropicApiKey.isEmpty {
-                                //     NavigationLink(value: MeditationDestination.guided) {
-                                //         Label {
-                                //             Text("Guided")
-                                //         } icon: {
-                                //             Image(systemName: "asterisk")
-                                //                 .rotationEffect(.degrees(45))
-                                //                 .imageScale(.large)
-                                //         }
-                                //         .padding(.vertical, navigationLinkVerticalPadding)
-                                //     }
-                                // }
+                                if settings.meditationTimerEnabled {
+                                    Section {
+                                        NavigationLink(value: MeditationDestination.timer) {
+                                            Label("Timer", systemImage: "timer")
+                                                .padding(.vertical, navigationLinkVerticalPadding)
+                                                .imageScale(.small)
+                                        }
+                                    }
+                                }
                             } header: {
                                 HStack {
-                                    Text("Meditate")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.primary)
-                                        .textCase(nil)
+                                    Text("Tools")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                    .textCase(nil)
                                         .padding(.leading, -16)
                                     
                                     Spacer()
@@ -120,7 +90,7 @@ struct ContentView: View {
                         .onDelete(perform: deleteChats)
                     } header: {
                         HStack {
-                            Text("Chats")
+                            Text("Gotama")
                                 .font(.title2)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.primary)
@@ -152,10 +122,10 @@ struct ContentView: View {
                 }
                 .navigationDestination(for: MeditationDestination.self) { destination in
                     switch destination {
-                    case .bell:
+                    case .timer:
                         MeditationTimerView()
-                    case .guided:
-                        ChatView(chat: createGuidedMeditationChat())
+                    // case .guided:
+                    //     ChatView(chat: createGuidedMeditationChat())
                     }
                 }
                 .navigationDestination(for: MindfulnessDestination.self) { destination in
@@ -298,8 +268,8 @@ enum JournalDestination: Hashable {
 }
 
 enum MeditationDestination: Hashable {
-    case bell
-    case guided
+    case timer
+    // case guided
 }
 
 enum MindfulnessDestination: Hashable {

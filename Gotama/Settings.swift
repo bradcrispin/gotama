@@ -18,29 +18,17 @@ final class Settings {
     var mindfulnessBellIntervalHours: Double
     var mindfulnessBellIsScheduled: Bool
     
-    // MARK: - Development Helpers
-    
-    /// Determines if the app is running in development mode
-    private static var isDevelopment: Bool {
+    init(firstName: String = "Brad", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = true, mindfulnessBellEnabled: Bool = true, meditationTimerEnabled: Bool = true, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
+        
         #if DEBUG
-        return true
+        // Try to load API key from environment in development
+        let devApiKey = DevelopmentSettings.loadDevApiKey()
+        self.anthropicApiKey = devApiKey.isEmpty ? anthropicApiKey : devApiKey
         #else
-        return false
+        self.anthropicApiKey = anthropicApiKey
         #endif
-    }
-    
-    /// Loads the Anthropic API key from environment variables in development mode
-    private static func loadDevApiKey() -> String {
-        guard isDevelopment else { return "" }
-        return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
-    }
-    
-    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = true, mindfulnessBellEnabled: Bool = true, meditationTimerEnabled: Bool = true, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
-        // In development, try to load API key from environment
-        let finalApiKey = Settings.isDevelopment ? Settings.loadDevApiKey() : anthropicApiKey
         
         self.firstName = firstName
-        self.anthropicApiKey = finalApiKey
         // self.priorExperience = priorExperience
         self.aboutMe = aboutMe
         self.goal = goal
@@ -51,10 +39,6 @@ final class Settings {
         self.mindfulnessBellEndTime = mindfulnessBellEndTime
         self.mindfulnessBellIntervalHours = mindfulnessBellIntervalHours
         self.mindfulnessBellIsScheduled = mindfulnessBellIsScheduled
-        
-        if Settings.isDevelopment {
-            print("🔐 Development mode: API key \(finalApiKey.isEmpty ? "not found" : "loaded") from environment")
-        }
     }
     
     // Helper method to ensure single Settings instance

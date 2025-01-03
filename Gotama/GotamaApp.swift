@@ -15,7 +15,7 @@ private let skipLaunchScreenForDevelopment = false
 @main
 struct GotamaApp: App {
     @State private var showIntroduction = false
-    @State private var showLaunchScreen = true
+    @State private var showLaunchScreen = false
     @State private var launchScreenOpacity = 0.0  // New state for launch screen fade
     @State private var navigationPath: NavigationPath
     
@@ -63,7 +63,7 @@ struct GotamaApp: App {
                         
                         // Start launch screen timer after a longer delay for first launch
                         Task { @MainActor in
-                            try? await Task.sleep(for: .seconds(4.0))  // Increased to allow for text fade + 2s of rotating asterisk
+                            try? await Task.sleep(for: .seconds(2.5))  // Increased to allow for text fade + 2s of rotating asterisk
                             startLaunchScreenTimer()
                         }
                     }

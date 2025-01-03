@@ -1,0 +1,15 @@
+import Foundation
+
+/// Development-only settings and helpers
+/// Copy this file to DevelopmentSettings.swift and add your development environment variables
+enum DevelopmentSettings {
+    /// Loads development-only environment variables
+    static func loadDevApiKey() -> String {
+        #if DEBUG
+        // Add your Anthropic API key to your environment or Xcode scheme
+        return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
+        #else
+        return ""
+        #endif
+    }
+} 
