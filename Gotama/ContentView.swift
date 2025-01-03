@@ -81,18 +81,18 @@ struct ContentView: View {
                                 }
                                 
                                 // Only show guided meditation if API key is present
-                                if !settings.anthropicApiKey.isEmpty {
-                                    NavigationLink(value: MeditationDestination.guided) {
-                                        Label {
-                                            Text("Guided")
-                                        } icon: {
-                                            Image(systemName: "asterisk")
-                                                .rotationEffect(.degrees(45))
-                                                .imageScale(.large)
-                                        }
-                                        .padding(.vertical, navigationLinkVerticalPadding)
-                                    }
-                                }
+                                // if !settings.anthropicApiKey.isEmpty {
+                                //     NavigationLink(value: MeditationDestination.guided) {
+                                //         Label {
+                                //             Text("Guided")
+                                //         } icon: {
+                                //             Image(systemName: "asterisk")
+                                //                 .rotationEffect(.degrees(45))
+                                //                 .imageScale(.large)
+                                //         }
+                                //         .padding(.vertical, navigationLinkVerticalPadding)
+                                //     }
+                                // }
                             } header: {
                                 HStack {
                                     Text("Meditate")
