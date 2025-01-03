@@ -131,6 +131,15 @@ struct GotamaProfileView: View {
             .navigationTitle("Gotama")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 3) {
+                        Text("Gotama")
+                            .fontWeight(.semibold)
+                        Text(selectedText == .none ? "Modern" : "Ancient")
+                            .foregroundStyle(.gray.opacity(0.8))
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         softHaptics.impactOccurred()
