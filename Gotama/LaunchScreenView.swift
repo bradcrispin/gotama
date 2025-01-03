@@ -35,23 +35,24 @@ struct LaunchScreenView: View {
                 // Set environment variable to indicate we're coming from launch screen
                 setenv("FROM_LAUNCH_SCREEN", "true", 1)
                 
-
                 // Start the rotation animation
                 withAnimation(.easeInOut(duration: 8)
                     .repeatForever(autoreverses: false)) {
                     asteriskRotation = 405 // 45 + 360 degrees
                 }
                 
-                // Fade out text after 4 seconds (halfway through the rotation)
-                withAnimation(.easeInOut(duration: 1).delay(1)) {
-                    textOpacity = 0
+                // Fade out text after delay
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1.0))
+                    withAnimation(.easeInOut(duration: 1.0)) {
+                        textOpacity = 0
+                    }
                 }
             }
             .onDisappear {
                 // Clear the environment variable when launch screen disappears
                 unsetenv("FROM_LAUNCH_SCREEN")
             }
-
         }
     }
 }
