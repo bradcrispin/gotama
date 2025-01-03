@@ -18,7 +18,7 @@ final class Settings {
     var mindfulnessBellIntervalHours: Double
     var mindfulnessBellIsScheduled: Bool
     
-    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = false, mindfulnessBellEnabled: Bool = false, meditationBellEnabled: Bool = false, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
+    init(firstName: String = "", anthropicApiKey: String = "", priorExperience: String = "", aboutMe: String = "", goal: String = "", journalEnabled: Bool = true, mindfulnessBellEnabled: Bool = true, meditationBellEnabled: Bool = true, mindfulnessBellStartTime: Date? = nil, mindfulnessBellEndTime: Date? = nil, mindfulnessBellIntervalHours: Double = 0, mindfulnessBellIsScheduled: Bool = false) {
         self.firstName = firstName
         self.anthropicApiKey = anthropicApiKey
         // self.priorExperience = priorExperience
