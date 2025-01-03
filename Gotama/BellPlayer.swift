@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 
 /// A custom bell sound player that creates a more meditation-appropriate sound
 class BellPlayer: ObservableObject {
@@ -43,8 +44,13 @@ class BellPlayer: ObservableObject {
     private func setupAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
+            
+            // Configure for background playback
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers, .allowBluetooth, .duckOthers])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            
+            // Enable background audio
+            UIApplication.shared.beginReceivingRemoteControlEvents()
             
             // Observe volume changes using AVAudioSession KVO
             volumeObserver = session.observe(\.outputVolume) { [weak self] _, _ in
@@ -54,7 +60,7 @@ class BellPlayer: ObservableObject {
             // Initial volume check
             checkVolume()
             
-            print("🔔 Audio session setup complete")
+            print("🔔 Audio session setup complete with background capability")
         } catch {
             print("❌ Failed to setup audio session: \(error)")
         }
@@ -356,6 +362,9 @@ class BellPlayer: ObservableObject {
         if let observer = audioSessionObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        
+        // Stop receiving remote control events
+        UIApplication.shared.endReceivingRemoteControlEvents()
         
         fadeOutAndStop()
         stopEngine()

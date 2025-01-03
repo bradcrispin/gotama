@@ -1,9 +1,29 @@
 import SwiftUI
+import MediaPlayer
+
+// MARK: - UIImage Extension
+fileprivate extension UIImage {
+    func rotated(by radians: CGFloat) -> UIImage? {
+        let rotatedSize = CGRect(origin: .zero, size: size)
+            .applying(CGAffineTransform(rotationAngle: radians))
+            .integral.size
+        UIGraphicsBeginImageContext(rotatedSize)
+        defer { UIGraphicsEndImageContext() }
+        
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        context.translateBy(x: rotatedSize.width/2, y: rotatedSize.height/2)
+        context.rotate(by: radians)
+        draw(in: CGRect(x: -size.width/2, y: -size.height/2, width: size.width, height: size.height))
+        
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
+}
 
 /// A view that provides an elegant meditation timer experience with bell sounds
 struct MeditationTimerView: View {
     // MARK: - Environment & State
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var bellPlayer = BellPlayer()
     
     // Timer state
@@ -11,6 +31,7 @@ struct MeditationTimerView: View {
     @State private var timeRemaining: TimeInterval = 600
     @State private var isActive = false
     @State private var timer: Timer?
+    @State private var backgroundDate: Date?
     
     // Animation states
     @State private var showCompletion = false
@@ -19,6 +40,41 @@ struct MeditationTimerView: View {
     
     // Time increment in seconds (5 minutes)
     private let timeIncrement: TimeInterval = 300
+    
+    init() {
+        setupRemoteCommandCenter()
+    }
+    
+    private func setupRemoteCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        
+        // Remove any existing handlers
+        commandCenter.playCommand.removeTarget(nil)
+        commandCenter.pauseCommand.removeTarget(nil)
+        commandCenter.togglePlayPauseCommand.removeTarget(nil)
+        
+        // Add command handlers
+        commandCenter.playCommand.addTarget { [self] _ in
+            if !isActive {
+                toggleTimer()
+                return .success
+            }
+            return .commandFailed
+        }
+        
+        commandCenter.pauseCommand.addTarget { [self] _ in
+            if isActive {
+                toggleTimer()
+                return .success
+            }
+            return .commandFailed
+        }
+        
+        commandCenter.togglePlayPauseCommand.addTarget { [self] _ in
+            toggleTimer()
+            return .success
+        }
+    }
     
     // MARK: - Body
     var body: some View {
@@ -112,6 +168,25 @@ struct MeditationTimerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedDuration) { _, newDuration in
                 timeRemaining = newDuration
+                if isActive {
+                    updateNowPlaying()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                switch newPhase {
+                case .background:
+                    handleBackground()
+                case .active:
+                    handleForeground()
+                default:
+                    break
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                handleBackground()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                handleForeground()
             }
             .animation(.easeInOut(duration: 0.3), value: isActive)
             .animation(.easeInOut(duration: 0.3), value: showCompletion)
@@ -222,8 +297,10 @@ struct MeditationTimerView: View {
         
         if isActive {
             startTimer()
+            setupNowPlaying()
         } else {
             pauseTimer()
+            updateNowPlaying()
         }
     }
     
@@ -236,10 +313,106 @@ struct MeditationTimerView: View {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 1
+                updateNowPlaying()
             } else {
                 completeTimer()
             }
         }
+        
+        // Add the timer to the common run loop modes
+        RunLoop.current.add(timer!, forMode: .common)
+        
+        // Update background date
+        backgroundDate = nil
+    }
+    
+    /// Sets up Now Playing info for lock screen
+    private func setupNowPlaying() {
+        // Create canvas size and calculate symbol size (80% of canvas)
+        let canvasSize = CGSize(width: 256, height: 256)
+        let symbolSize = canvasSize.width * 0.82 // 82% of canvas width
+        
+        // Create artwork from SF Symbol with calculated size
+        let config = UIImage.SymbolConfiguration(pointSize: symbolSize, weight: .regular)
+        let backgroundColor: UIColor = colorScheme == .dark ? .systemBackground : .secondarySystemBackground
+        
+        // Create a context to draw the symbol with background
+        UIGraphicsBeginImageContextWithOptions(canvasSize, false, 0)
+        defer { UIGraphicsEndImageContext() }
+        
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        
+        // Draw background
+        context.setFillColor(backgroundColor.cgColor)
+        context.fill(CGRect(origin: .zero, size: canvasSize))
+        
+        // Draw symbol
+        if let asterisk = UIImage(systemName: "asterisk", withConfiguration: config)?
+            .withTintColor(.accent, renderingMode: .alwaysOriginal) {
+            // Center the symbol in the canvas
+            let rect = CGRect(
+                x: (canvasSize.width - asterisk.size.width) / 2,
+                y: (canvasSize.height - asterisk.size.height) / 2,
+                width: asterisk.size.width,
+                height: asterisk.size.height
+            )
+            
+            // Apply rotation around the center
+            context.translateBy(x: canvasSize.width/2, y: canvasSize.height/2)
+            context.rotate(by: .pi/4) // 45 degrees
+            context.translateBy(x: -canvasSize.width/2, y: -canvasSize.height/2)
+            asterisk.draw(in: rect)
+        }
+        
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        
+        var nowPlayingInfo: [String: Any] = [
+            MPMediaItemPropertyTitle: "Meditation Timer",
+            MPMediaItemPropertyArtist: "Gotama",
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: selectedDuration - timeRemaining,
+            MPMediaItemPropertyPlaybackDuration: selectedDuration,
+            MPNowPlayingInfoPropertyPlaybackRate: isActive ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
+            MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue
+        ]
+        
+        // Add artwork if we created it
+        if let image = image {
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        
+        // Ensure we're the now playing app
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+    
+    /// Updates Now Playing info on lock screen
+    private func updateNowPlaying() {
+        var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = selectedDuration - timeRemaining
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isActive ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+    
+    /// Handles app moving to background
+    private func handleBackground() {
+        backgroundDate = Date()
+    }
+    
+    /// Handles app returning to foreground
+    private func handleForeground() {
+        guard isActive, let backgroundDate = backgroundDate else { return }
+        
+        let timeInBackground = Date().timeIntervalSince(backgroundDate)
+        timeRemaining = max(0, timeRemaining - timeInBackground)
+        
+        if timeRemaining == 0 {
+            completeTimer()
+        }
+        
+        self.backgroundDate = nil
+        updateNowPlaying()
     }
     
     /// Pauses the meditation timer
