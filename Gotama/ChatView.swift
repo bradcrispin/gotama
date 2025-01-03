@@ -16,6 +16,7 @@ struct ChatView: View {
     @State private var showSettings = false
     @State private var showGotamaProfile = false
     @State private var canCreateNewChat = false
+    @State private var profile: GotamaProfile?
     @Namespace private var animation
     @State private var asteriskRotation = 45.0
     @State private var isAsteriskAnimating = false
@@ -323,12 +324,14 @@ struct ChatView: View {
                     HStack(spacing: 3) {
                         Text("Gotama")
                             .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .fontWeight(.semibold)
+                        Text(profile?.selectedText == AncientText.none.rawValue ? "Modern" : "Ancient")
+                            .foregroundStyle(.gray.opacity(0.8))
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10.5))
-                            .imageScale(.small)
+                            .font(.system(size: 12))
+                            .imageScale(.medium)
                             .offset(y: 1)
-                            .opacity(0.75)
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundStyle(.gray.opacity(0.8))
                     }
                 }
             }
@@ -399,6 +402,19 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showGotamaProfile) {
             GotamaProfileView()
+                .onDisappear {
+                    // Reload profile when settings view is dismissed
+                    Task {
+                        do {
+                            let loadedProfile = try GotamaProfile.getOrCreate(modelContext: modelContext)
+                            await MainActor.run {
+                                self.profile = loadedProfile
+                            }
+                        } catch {
+                            print("❌ Error loading profile: \(error)")
+                        }
+                    }
+                }
         }
         .onAppear {
             // print("📱 ChatView.body onAppear")
@@ -491,6 +507,18 @@ struct ChatView: View {
                     }
                 } catch {
                     print("❌ Error configuring Anthropic client: \(error)")
+                }
+            }
+            
+            // Load profile
+            Task {
+                do {
+                    let loadedProfile = try GotamaProfile.getOrCreate(modelContext: modelContext)
+                    await MainActor.run {
+                        self.profile = loadedProfile
+                    }
+                } catch {
+                    print("❌ Error loading profile: \(error)")
                 }
             }
         }
