@@ -74,11 +74,11 @@ struct GotamaProfileView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(option.displayName)
-                                    .font(.body)
+                                    .formRowTitleText()
                                 Text(option.description)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .formRowSubtitleText()
                             }
+                            .padding(.vertical, 4)
                             Spacer()
                             if role == option.name {
                                 Image(systemName: "checkmark")
@@ -93,6 +93,7 @@ struct GotamaProfileView: View {
                     }
                 } header: {
                     Text("Role")
+                        .formSectionHeaderText()
                 }
 
                 Section {
@@ -100,11 +101,11 @@ struct GotamaProfileView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(option.displayName)
-                                    .font(.body)
+                                    .formRowTitleText()
                                 Text(option.description)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .formRowSubtitleText()
                             }
+                            .padding(.vertical, 4)
                             Spacer()
                             if model == option.apiName {
                                 Image(systemName: "checkmark")
@@ -119,46 +120,52 @@ struct GotamaProfileView: View {
                     }
                 } header: {
                     Text("Model")
+                        .formSectionHeaderText()
                 }
                 
                 if hasLoaded {
-
-                if let currentSettings = settings.first {
-                    let hasNoContext = currentSettings.goal.isEmpty && 
-                                     currentSettings.aboutMe.isEmpty && 
-                                     !currentSettings.journalEnabled
-                    
-                    Section {
-                        if !currentSettings.goal.isEmpty {
-                            Toggle("My goal", isOn: $includeGoal)
-                        }
-                        if !currentSettings.aboutMe.isEmpty {
-                            Toggle("About me", isOn: $includeAboutMe)
-                        }
-                        if currentSettings.journalEnabled {
-                            Toggle("Journal", isOn: $includeJournal)
-                        }
-                    } header: {
-                        Text("Context")
-                    } footer: {
-                        if hasNoContext {
-                            Text("Add to your profile or enable tools to give Gotama more context")
-                                .foregroundColor(.secondary)
-                        } else {
-                            Text("Give Gotama more context for conversations")
+                    if let currentSettings = settings.first {
+                        let hasNoContext = currentSettings.goal.isEmpty && 
+                                         currentSettings.aboutMe.isEmpty && 
+                                         !currentSettings.journalEnabled
+                        
+                        Section {
+                            if !currentSettings.goal.isEmpty {
+                                Toggle("My goal", isOn: $includeGoal)
+                                    .formRowTitleText()
+                            }
+                            if !currentSettings.aboutMe.isEmpty {
+                                Toggle("About me", isOn: $includeAboutMe)
+                                    .formRowTitleText()
+                            }
+                            if currentSettings.journalEnabled {
+                                Toggle("Journal", isOn: $includeJournal)
+                                    .formRowTitleText()
+                            }
+                        } header: {
+                            Text("Context")
+                                .formSectionHeaderText()
+                        } footer: {
+                            if hasNoContext {
+                                Text("Add to your profile or enable tools to give Gotama more context")
+                                    .formFooterText()
+                            } else {
+                                Text("Give Gotama more context for conversations")
+                                    .formFooterText()
+                            }
                         }
                     }
-                }
-                                        Section {
+                    
+                    Section {
                         ForEach(AncientText.allCases) { text in
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(text.rawValue)
-                                        .font(.body)
+                                        .formRowTitleText()
                                     Text(text.description)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .formRowSubtitleText()
                                 }
+                                .padding(.vertical, 4)
                                 Spacer()
                                 if selectedText == text {
                                     Image(systemName: "checkmark")
@@ -173,8 +180,10 @@ struct GotamaProfileView: View {
                         }
                     } header: {
                         Text("Ancient Texts")
+                            .formSectionHeaderText()
                     } footer: {
                         Text("Select an early Buddhist text for Gotama to reference in responses.")
+                            .formFooterText()
                     }
                 }
             }

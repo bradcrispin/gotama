@@ -321,20 +321,26 @@ struct ChatView: View {
                 Button {
                     showGotamaProfile = true
                 } label: {
-                    HStack(spacing: 3) {
+                    HStack(spacing: 4) {
                         Text("Gotama")
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .fontWeight(.semibold)
+                        
+                        // Role indicator with improved typography
                         Text(profile?.role == "Teacher" ? 
                              (profile?.selectedText == AncientText.none.rawValue ? "Modern" : "Ancient") :
                              "Assistant")
+                            .font(.system(size: 17))
                             .foregroundStyle(.gray.opacity(0.8))
+                            .padding(.leading, 1)
+                        
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 12))
-                            .imageScale(.medium)
-                            .offset(y: 1)
+                            .font(.system(size: 13, weight: .medium))
+                            .imageScale(.small)
                             .foregroundStyle(.gray.opacity(0.8))
+                            .padding(.leading, -1)
                     }
+                    .padding(.vertical, 4) // Add touch target padding
                 }
             }
             

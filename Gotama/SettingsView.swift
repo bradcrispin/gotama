@@ -35,12 +35,15 @@ struct SettingsView: View {
             Form {
                 Section {
                     TextField("", text: $firstName)
+                        .formRowTitleText()
                 } header: {
                     Text("First name")
+                        .formSectionHeaderText()
                 }
 
                 Section {
                     TextEditor(text: $goal)
+                        .formRowTitleText()
                         .frame(minHeight: 60)
                         .onChange(of: goal) {
                             if goal.count > maxGoalLength {
@@ -49,17 +52,20 @@ struct SettingsView: View {
                         }
                 } header: {
                     Text("My goal")
+                        .formSectionHeaderText()
                 } footer: {
                     Group {
                         if goal.count > Int(Double(maxGoalLength) * 0.8) {
                             Text("Getting close to limit (\(goal.count)/\(maxGoalLength) characters)")
-                                .foregroundColor(.orange)
+                                .formFooterText()
+                                .foregroundStyle(.orange)
                         }
                     }
                 }
                 
                 Section {
                     TextEditor(text: $aboutMe)
+                        .formRowTitleText()
                         .frame(minHeight: 100)
                         .onChange(of: aboutMe) {
                             if aboutMe.count > maxAboutMeLength {
@@ -68,11 +74,13 @@ struct SettingsView: View {
                         }
                 } header: {
                     Text("About me")
+                        .formSectionHeaderText()
                 } footer: {
                     Group {
                         if aboutMe.count > Int(Double(maxAboutMeLength) * 0.8) {
                             Text("Getting close to limit (\(aboutMe.count)/\(maxAboutMeLength) characters)")
-                                .foregroundColor(.orange)
+                                .formFooterText()
+                                .foregroundStyle(.orange)
                         }
                     }
                 }
@@ -81,38 +89,44 @@ struct SettingsView: View {
                     Toggle(isOn: $mindfulnessBellEnabled) {
                         Label {
                             Text("Bell")
+                                .formRowTitleText()
                         } icon: {
                             Image(systemName: "bell.badge")
-                                .imageScale(.large)
+                                .imageScale(.medium)
                         }
                     }
                     Toggle(isOn: $meditationTimerEnabled) {
                         Label {
                             Text("Timer")
+                                .formRowTitleText()
                         } icon: {
                             Image(systemName: "timer")
-                                .imageScale(.large)
+                                .imageScale(.medium)
                         }
                     }
                     Toggle(isOn: $journalEnabled) {
                         Label {
                             Text("Journal")
+                                .formRowTitleText()
                         } icon: {
                             Image(systemName: "text.book.closed")
-                                .imageScale(.large)
+                                .imageScale(.medium)
                         }
                     }
                 } header: {
                     Text("Tools")
+                        .formSectionHeaderText()
                 }
                 
                 Section {
                     HStack {
                         if isApiKeyVisible {
                             TextField("API Key", text: $apiKey)
+                                .formRowTitleText()
                                 .focused($isApiKeyFocused)
                         } else {
                             SecureField("API Key", text: $apiKey)
+                                .formRowTitleText()
                                 .focused($isApiKeyFocused)
                         }
                         
@@ -125,8 +139,10 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Anthropic API Key")
+                        .formSectionHeaderText()
                 } footer: {
                     Text("Get your API key from console.anthropic.com")
+                        .formFooterText()
                 }
             }
             .navigationTitle("Profile")

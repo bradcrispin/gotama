@@ -110,11 +110,11 @@ struct ChatCitationBlock: View {
                     HStack {
                         HStack(spacing: 8) {
                             Text(verse)
-                                .font(.subheadline)
+                                .font(.system(size: 15))
                                 .foregroundStyle(.secondary)
                             
                             Text("Atthakavagga")
-                                .font(.caption)
+                                .font(.system(size: 13))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.9))
@@ -180,8 +180,9 @@ struct ChatCitationBlock: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if showPali, let pali = citationContent.pali {
                         Text(pali)
-                            .font(.subheadline)
+                            .font(.system(size: 16))
                             .italic()
+                            .lineSpacing(5)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,7 +198,8 @@ struct ChatCitationBlock: View {
                     
                     if let translation = citationContent.translation {
                         Text(translation)
-                            .font(.subheadline)
+                            .font(.system(size: 16))
+                            .lineSpacing(5)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,13 +207,13 @@ struct ChatCitationBlock: View {
                 }
                 .padding(.top, 8)
             }
-            .padding(8)
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.97))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(.vertical, 8)
-        .padding(.horizontal, -12)
+        .padding(.horizontal, -8)
         .onDisappear {
             copyTimer?.cancel()
             copyTimer = nil

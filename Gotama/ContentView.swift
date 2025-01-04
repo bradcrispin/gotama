@@ -18,8 +18,15 @@ struct ContentView: View {
     @State private var journal: JournalEntry?
     
     // MARK: - Configuration
-    private let sectionVerticalPadding: CGFloat = 2  // Controls padding for section headers
-    private let navigationLinkVerticalPadding: CGFloat = 8  // Controls padding for navigation links
+    
+    // Section configuration
+    private let sectionVerticalPadding: CGFloat = 4
+    
+    // List item configuration
+    private let listItemVerticalPadding: CGFloat = 11  // Standard iOS list item padding
+    private let listItemHorizontalPadding: CGFloat = 4 // Fine-tune horizontal alignment
+    private let listItemIconSpacing: CGFloat = 12      // Space between icon and text
+    private let listItemRowSpacing: CGFloat = 4        // Space between rows in multi-line items
     
     private let haptics = UIImpactFeedbackGenerator(style: .medium)
     private let softHaptics = UIImpactFeedbackGenerator(style: .soft)
@@ -29,51 +36,59 @@ struct ContentView: View {
             ZStack {
                 List {
                     if let settings = settings.first, !settings.firstName.isEmpty {
-                                                
                         // Tools Section
                         if settings.mindfulnessBellEnabled || settings.journalEnabled || settings.meditationTimerEnabled {
                             Section {
                                 if settings.mindfulnessBellEnabled {
                                     NavigationLink(value: MindfulnessDestination.bell) {
-                                        Label("Bell", systemImage: settings.mindfulnessBellIsScheduled ? "bell.badge" : "bell.slash")
-                                            .padding(.vertical, navigationLinkVerticalPadding)
-                                            .imageScale(.small)
-                                            .contentTransition(.symbolEffect(.replace))
-                                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: settings.mindfulnessBellIsScheduled)
+                                        Label {
+                                            Text("Bell")
+                                                .navigationRowText()
+                                        } icon: {
+                                            Image(systemName: settings.mindfulnessBellIsScheduled ? "bell.badge" : "bell.slash")
+                                                .imageScale(.medium)
+                                        }
+                                        .padding(.vertical, listItemVerticalPadding)
+                                        .padding(.horizontal, listItemHorizontalPadding)
+                                        .contentTransition(.symbolEffect(.replace))
+                                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: settings.mindfulnessBellIsScheduled)
                                     }
                                 }
                                 if settings.journalEnabled {
                                     NavigationLink(value: JournalDestination.existing(journal ?? JournalEntry())) {
-                                            Label {
-                                                if let entry = journal {
-                                                    JournalEntryRow(entry: entry)
-                                                } else {
-                                                    Text("Loading...")
-                                                }
-                                            } icon: {
-                                                Image(systemName: "text.book.closed")
-                                                .imageScale(.large)
+                                        Label {
+                                            if let entry = journal {
+                                                JournalEntryRow(entry: entry)
+                                            } else {
+                                                Text("Loading...")
+                                                    .navigationRowText()
+                                            }
+                                        } icon: {
+                                            Image(systemName: "text.book.closed")
+                                                .imageScale(.medium)
                                         }
+                                        .padding(.horizontal, listItemHorizontalPadding)
                                     }
                                 }
                                 if settings.meditationTimerEnabled {
-                                    Section {
-                                        NavigationLink(value: MeditationDestination.timer) {
-                                            Label("Timer", systemImage: "timer")
-                                                .padding(.vertical, navigationLinkVerticalPadding)
-                                                .imageScale(.small)
+                                    NavigationLink(value: MeditationDestination.timer) {
+                                        Label {
+                                            Text("Timer")
+                                                .navigationRowText()
+                                        } icon: {
+                                            Image(systemName: "timer")
+                                                .imageScale(.medium)
                                         }
+                                        .padding(.vertical, listItemVerticalPadding)
+                                        .padding(.horizontal, listItemHorizontalPadding)
                                     }
                                 }
                             } header: {
                                 HStack {
                                     Text("Tools")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(.primary)
-                                    .textCase(nil)
+                                        .sectionHeaderText()
+                                        .textCase(nil)
                                         .padding(.leading, -16)
-                                    
                                     Spacer()
                                 }
                                 .padding(.vertical, sectionVerticalPadding)
@@ -87,18 +102,16 @@ struct ContentView: View {
                             NavigationLink(value: ChatDestination.existing(chat)) {
                                 ChatRow(chat: chat)
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, listItemHorizontalPadding)
                             }
                         }
                         .onDelete(perform: deleteChats)
                     } header: {
                         HStack {
                             Text("Gotama")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
+                                .sectionHeaderText()
                                 .textCase(nil)
                                 .padding(.leading, -16)
-                            
                             Spacer()
                         }
                         .padding(.vertical, sectionVerticalPadding)
@@ -214,18 +227,19 @@ struct ContentView: View {
 }
 
 struct ChatRow: View {
+    @Environment(\.listItemVerticalPadding) private var verticalPadding
     let chat: Chat
     
     var body: some View {
         Text(chat.title)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.trailing, 8)
-            .padding(.vertical, 12)
+            .navigationRowText()
+            .padding(.vertical, verticalPadding)
     }
 }
 
 struct JournalEntryRow: View {
+    @Environment(\.listItemRowSpacing) private var rowSpacing
+    @Environment(\.listItemVerticalPadding) private var verticalPadding
     let entry: JournalEntry
     
     private var dateDescription: String {
@@ -239,19 +253,15 @@ struct JournalEntryRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: rowSpacing) {
             Text("Journal")
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .foregroundStyle(.primary)
-                .font(.body)
+                .navigationRowText()
             
+            // Uncomment if you want to show the date
             // Text(dateDescription)
-            //     .font(.caption)
-            //     .foregroundStyle(.secondary)
-                // .textCase(.uppercase)
+            //     .navigationMetadataText()
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, verticalPadding)
     }
 } 
 
@@ -276,4 +286,25 @@ enum MeditationDestination: Hashable {
 
 enum MindfulnessDestination: Hashable {
     case bell
+}
+
+// Add environment values for consistent padding across views
+private struct ListItemVerticalPaddingKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 11
+}
+
+private struct ListItemRowSpacingKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 4
+}
+
+extension EnvironmentValues {
+    var listItemVerticalPadding: CGFloat {
+        get { self[ListItemVerticalPaddingKey.self] }
+        set { self[ListItemVerticalPaddingKey.self] = newValue }
+    }
+    
+    var listItemRowSpacing: CGFloat {
+        get { self[ListItemRowSpacingKey.self] }
+        set { self[ListItemRowSpacingKey.self] = newValue }
+    }
 }

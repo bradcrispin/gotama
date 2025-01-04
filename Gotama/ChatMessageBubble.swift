@@ -293,15 +293,16 @@ private struct MarkdownText: View {
                     .padding(.bottom, 12)
             case .text:
                 formatText(line.content)
+                    .readingText()
                     .padding(.vertical, 4)
                     .transition(.opacity.animation(.easeIn(duration: 0.15)))
             case .emptyLine:
                 Spacer()
-                    .frame(height: 16)
+                    .frame(height: 12)
             case .code:
                 Text(line.content)
-                    .font(.system(.body, design: .monospaced))
-                    .padding(8)
+                    .codeText()
+                    .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.systemGray6))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -499,15 +500,13 @@ struct ChatMessageBubble: View {
                !firstName.isEmpty,
                message.role == "user" {
                 Text(firstName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 16)
+                    .secondaryReadingText()
+                    .padding(.leading, 12)
                     .padding(.bottom, 2)
             } else if message.role == "assistant" {
                 Text("Gotama")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 16)
+                    .secondaryReadingText()
+                    .padding(.leading, 12)
                     .padding(.bottom, -8)
             }
             
@@ -527,7 +526,7 @@ struct ChatMessageBubble: View {
                         )
                         .textSelection(.enabled)
                         .padding(.vertical, 8)
-                        .padding(.horizontal, message.role == "user" ? 12 : 16)
+                        .padding(.horizontal, message.role == "user" ? 12 : 12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contextMenu(menuItems: {
                             Button {
